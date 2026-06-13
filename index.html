@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bigg Boss: 16-Player Elimination Arena</title>
+    <!-- Meta for quality and description -->
+    <meta name="description" content="An online multiplayer survival tournament for up to 16 players. Compete in real-time mini-games, survive the rounds, and avoid eviction.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- MQTT library via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+</head>
+<body>
+    <!-- Background Canvas for futuristic ambient grid/particles -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- CRITICAL ALARM OVERLAY (flashes red on eviction or countdown) -->
+    <div class="crisis-overlay" id="alarm-overlay"></div>
+
+    <!-- 1. SETUP / WELCOME SCREEN -->
+    <div id="setup-screen" class="screen active">
+        <div class="setup-container glass-panel">
+            <!-- Animated Bigg Boss Eye Motif -->
+            <div class="eye-wrapper">
+                <div class="eye-outer"></div>
+                <div class="eye-inner"></div>
+                <div class="eye-pupil"></div>
+            </div>
+            
+            <h1 class="game-title">BIGG BOSS</h1>
+            <div class="subtitle">ELIMINATION ARENA</div>
+            <p class="game-intro-text">
+                16 players enter. 4 high-stakes mini-games. Each round, losers are evicted. 
+                Only one survivor will claim the ultimate title.
+            </p>
+
+            <div class="setup-forms">
+                <!-- Host Panel -->
+                <div class="form-card host-card">
+                    <h3>CREATE A SEASON</h3>
+                    <p>Start a new room as the Bigg Boss host and manage the game.</p>
+                    <button class="btn btn-primary" id="btn-create-room">Host Tournament</button>
+                    <button class="btn btn-secondary btn-full" id="btn-local-play" style="margin-top: 0.5rem; width: 100%;">Local Practice (vs Bots)</button>
+                </div>
+
+                <!-- Divider -->
+                <div class="form-divider"><span>OR</span></div>
+
+                <!-- Join Panel -->
+                <div class="form-card join-card">
+                    <h3>JOIN THE HOUSE</h3>
+                    <div class="input-group">
+                        <label for="input-player-name">Your Name</label>
+                        <input type="text" id="input-player-name" placeholder="Enter Name" maxlength="12">
+                    </div>
+                    <div class="input-group">
+                        <label for="input-room-code">Room Code (4-digits)</label>
+                        <input type="text" id="input-room-code" placeholder="e.g. 1234" maxlength="4">
+                    </div>
+                    <button class="btn btn-secondary" id="btn-join-room">Join Lobby</button>
+                </div>
+            </div>
+
+
+
+            <!-- Audio/Voice Settings -->
+            <div class="lobby-settings">
+                <div class="setting-toggle" id="voice-tts-toggle">
+                    <span class="indicator-dot green"></span>
+                    <span class="setting-label">Bigg Boss Voice: <strong id="voice-status">ON</strong></span>
+                </div>
+                <div class="setting-toggle" id="audio-music-toggle">
+                    <span class="indicator-dot green"></span>
+                    <span class="setting-label">Atmosphere: <strong id="music-status">ON</strong></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. LOBBY SCREEN -->
+    <div id="lobby-screen" class="screen">
+        <div class="lobby-container glass-panel">
+            <header class="lobby-header">
+                <div>
+                    <h2>BIGG BOSS LOBBY</h2>
+                    <div class="lobby-status-text" id="lobby-connection-status">Connecting to broker...</div>
+                </div>
+                <div class="room-code-display">
+                    <span class="label">ROOM CODE</span>
+                    <span class="code" id="display-room-code">----</span>
+                </div>
+            </header>
+
+            <div class="lobby-main">
+                <!-- 16-Player Slot Grid -->
+                <div class="player-slots-section">
+                    <h3>HOUSEMATES REGISTERED (<span id="connected-count">0</span>/16)</h3>
+                    <div class="player-grid" id="lobby-player-grid">
+                        <!-- 16 dynamic slots generated by js -->
+                    </div>
+                </div>
+
+                <!-- Host Controls / Instructions -->
+                <div class="lobby-controls-panel">
+                    <div class="info-box">
+                        <h4>TOURNAMENT BLUEPRINT</h4>
+                        <ul class="blueprint-list">
+                            <li><span>Game 1:</span> Reaction Arena (16 &rarr; 8 Players)</li>
+                            <li><span>Game 2:</span> Tic-Cross Duel (8 &rarr; 4 Players)</li>
+                            <li><span>Game 3:</span> Memory Core (4 &rarr; 2 Players)</li>
+                            <li><span>Game 4:</span> The Final Grid (2 &rarr; 1 Winner)</li>
+                        </ul>
+                    </div>
+
+                    <div class="controls-actions" id="host-lobby-controls" style="display: none;">
+                        <button class="btn btn-secondary btn-full" id="btn-add-bots">Fill Lobby with Bots</button>
+                        <button class="btn btn-primary btn-full btn-large" id="btn-start-game" disabled>Launch Season (Requires 16 Players)</button>
+                    </div>
+                    
+                    <div class="controls-actions" id="client-lobby-waiting">
+                        <div class="loader-spinner"></div>
+                        <p class="waiting-message">Waiting for Bigg Boss to launch the season...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. GAMEPLAY ARENA SCREEN -->
+    <div id="arena-screen" class="screen">
+        <div class="arena-layout">
+            
+            <!-- LEFT: Tournament Roster & Status -->
+            <aside class="arena-sidebar glass-panel">
+                <h3>HOUSE ROSTER</h3>
+                <div class="status-grid" id="arena-player-roster">
+                    <!-- Dynamic list of players with active/eliminated indicators -->
+                </div>
+                
+                <div class="spectator-card" id="spectator-banner" style="display: none;">
+                    <div class="spec-eye"></div>
+                    <div>
+                        <h4>SPECTATOR MODE</h4>
+                        <p>You have been evicted. Watch the surviving players.</p>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- RIGHT: Active Game Stage -->
+            <main class="arena-viewport">
+                <!-- Header HUD -->
+                <header class="arena-hud glass-panel">
+                    <div class="stage-info">
+                        <span class="stage-badge" id="arena-stage-badge">GAME 1</span>
+                        <h2 id="arena-stage-title">REACTION ARENA</h2>
+                    </div>
+                    <div class="stage-timer" id="arena-timer-container">
+                        <span class="timer-label">STABILITY TIMER</span>
+                        <span class="timer-clock" id="arena-clock">30</span>
+                    </div>
+                </header>
+
+                <!-- Bigg Boss Command Prompt (Dramatic scrolling banner) -->
+                <div class="narrative-banner glass-panel">
+                    <div class="narrator-eye"></div>
+                    <div class="narrative-content">
+                        <span class="narrator-tag">BIGG BOSS:</span>
+                        <span class="narrative-text" id="arena-narrator-text">Bigg Boss requests all housemates to prepare for the first task.</span>
+                    </div>
+                </div>
+
+                <!-- Main Mini-game Container -->
+                <div class="game-playfield glass-panel" id="arena-playfield">
+                    
+                    <!-- Pre-round Countdown View -->
+                    <div id="game-countdown-view" class="game-subview active">
+                        <div class="countdown-circle">
+                            <span id="countdown-number">3</span>
+                        </div>
+                        <h3 id="countdown-desc">Prepare your fingers...</h3>
+                    </div>
+
+                    <!-- Mini-game 1: Reaction Arena -->
+                    <div id="game-reaction-view" class="game-subview">
+                        <div class="instruction-bubble">Press SPACEBAR or CLICK when the indicator is in the green zone!</div>
+                        <div class="reaction-gauge-container">
+                            <div class="reaction-track">
+                                <div class="reaction-target-zone" id="reaction-target"></div>
+                                <div class="reaction-indicator" id="reaction-indicator"></div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-large btn-glow" id="btn-reaction-action">HIT TARGET</button>
+                        <div class="reaction-feedback" id="reaction-feedback-text">READY</div>
+                        <div class="reaction-score-board" id="reaction-stats">
+                            Timing Score: <span id="reaction-val-score">0ms</span>
+                        </div>
+                    </div>
+
+                    <!-- Mini-game 2: Tic-Cross Duel -->
+                    <div id="game-ticcross-view" class="game-subview">
+                        <div class="ticcross-layout">
+                            <!-- Matchup indicator -->
+                            <div class="matchup-header">
+                                <span class="player-tag player-x" id="tc-player-x">Player 1</span>
+                                <span class="vs">VS</span>
+                                <span class="player-tag player-o" id="tc-player-o">Player 2</span>
+                            </div>
+                            
+                            <!-- Board Wrapper -->
+                            <div class="ticcross-board-container">
+                                <div class="ticcross-board" id="tc-grid">
+                                    <div class="tc-cell" data-index="0"></div>
+                                    <div class="tc-cell" data-index="1"></div>
+                                    <div class="tc-cell" data-index="2"></div>
+                                    <div class="tc-cell" data-index="3"></div>
+                                    <div class="tc-cell" data-index="4"></div>
+                                    <div class="tc-cell" data-index="5"></div>
+                                    <div class="tc-cell" data-index="6"></div>
+                                    <div class="tc-cell" data-index="7"></div>
+                                    <div class="tc-cell" data-index="8"></div>
+                                </div>
+                            </div>
+                            <div class="tc-status" id="tc-turn-status">Waiting for game initialization...</div>
+                        </div>
+                    </div>
+
+                    <!-- Mini-game 3: Memory Core -->
+                    <div id="game-memory-view" class="game-subview">
+                        <div class="instruction-bubble">Repeat the sequence of flashing energy cores!</div>
+                        <div class="memory-grid">
+                            <div class="mem-pad pad-blue" id="mem-pad-0"></div>
+                            <div class="mem-pad pad-red" id="mem-pad-1"></div>
+                            <div class="mem-pad pad-green" id="mem-pad-2"></div>
+                            <div class="mem-pad pad-yellow" id="mem-pad-3"></div>
+                        </div>
+                        <div class="memory-status" id="memory-level-display">Round: 1 | Score: 0</div>
+                    </div>
+
+                    <!-- Mini-game 4: The Final Grid -->
+                    <div id="game-finalgrid-view" class="game-subview">
+                        <div class="instruction-bubble">Race to click the numbers 1 to 16 in ascending order!</div>
+                        <div class="finalgrid-board" id="fg-board">
+                            <!-- 16 dynamic numbered grid tiles -->
+                        </div>
+                        <div class="fg-status">
+                            Numbers Cleared: <span id="fg-cleared-count">0</span> / 16
+                        </div>
+                    </div>
+
+                    <!-- Post-round Results / Eviction Standby View -->
+                    <div id="game-results-view" class="game-subview">
+                        <div class="results-header">
+                            <h2 class="alert-title">ROUND CONCLUDED</h2>
+                            <p id="results-verdict-text">Bigg Boss is evaluating the scores...</p>
+                        </div>
+                        <div class="results-main" id="results-players-list">
+                            <!-- Lists scores/times and indicates who survives / is nominated -->
+                        </div>
+                        <div class="results-footer" id="host-results-controls" style="display:none;">
+                            <button class="btn btn-primary btn-large btn-glow" id="btn-next-round">Proceed to Eviction Ceremony</button>
+                        </div>
+                    </div>
+
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 4. EVICTION CEREMONY OVERLAY -->
+    <div id="eviction-screen" class="screen">
+        <div class="eviction-container glass-panel">
+            <div class="spotlight"></div>
+            <h1 class="ceremony-title">EVICTION CEREMONY</h1>
+            
+            <div class="eye-wrapper mini">
+                <div class="eye-outer animate-red"></div>
+                <div class="eye-inner"></div>
+                <div class="eye-pupil"></div>
+            </div>
+
+            <div class="eviction-announcement">
+                <p class="announcement-intro">Bigg Boss announces that the following player is evicted from the house:</p>
+                <div class="evicted-player-card" id="evicted-player-name">PLAYER_NAME</div>
+                <p class="announcement-tagline">Their journey in the Bigg Boss house ends here.</p>
+            </div>
+
+            <div class="ceremony-actions" id="host-eviction-controls" style="display:none;">
+                <button class="btn btn-primary btn-large" id="btn-confirm-eviction">Advance to Next Game</button>
+            </div>
+            
+            <div class="ceremony-actions" id="client-eviction-waiting">
+                <p class="waiting-message">Waiting for Bigg Boss to confirm eviction...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. VICTORY / CHAMPION SCREEN -->
+    <div id="victory-screen" class="screen">
+        <div class="victory-container glass-panel">
+            <div class="winner-trophy">&#127942;</div>
+            <h1 class="victory-title">SEASON CHAMPION</h1>
+            
+            <p class="winner-congrats">After 4 intense games and eliminating 15 competitors, the ultimate survivor is:</p>
+            <div class="champion-badge" id="champion-player-name">CHAMPION</div>
+            
+            <div class="victory-stats" id="victory-season-summary">
+                <!-- Dynamic recap of the tournament games -->
+            </div>
+
+            <div class="btn-container">
+                <button class="btn btn-primary" id="btn-victory-restart">Back to Setup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Console Error Debug Logger Overlay -->
+    <div id="debug-log-overlay" style="position:fixed; bottom:10px; right:10px; background:rgba(10,12,22,0.95); color:#ff3366; font-family:monospace; font-size:12px; padding:15px; border-radius:8px; border:2px solid #ff3366; max-width:400px; max-height:250px; overflow-y:auto; z-index:9999; display:none; box-shadow:0 0 15px rgba(255,51,102,0.4);">
+        <strong style="color:#ffffff; border-bottom:1px solid #ff3366; display:block; padding-bottom:5px; margin-bottom:5px;">CONSOLE ERRORS DETECTED:</strong>
+    </div>
+    <script>
+        // Intercept console.error
+        const originalConsoleError = console.error;
+        console.error = function() {
+            var overlay = document.getElementById('debug-log-overlay');
+            if (overlay) {
+                overlay.style.display = 'block';
+                var div = document.createElement('div');
+                div.style.marginBottom = '8px';
+                div.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+                div.style.paddingBottom = '4px';
+                div.innerHTML = '<span style="color:#ff3366; font-weight:bold;">Console Error:</span> ' + Array.from(arguments).join(' ');
+                overlay.appendChild(div);
+            }
+            originalConsoleError.apply(console, arguments);
+        };
+
+        // Intercept console.warn
+        const originalConsoleWarn = console.warn;
+        console.warn = function() {
+            var overlay = document.getElementById('debug-log-overlay');
+            if (overlay) {
+                overlay.style.display = 'block';
+                var div = document.createElement('div');
+                div.style.marginBottom = '8px';
+                div.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+                div.style.paddingBottom = '4px';
+                div.innerHTML = '<span style="color:#fbbf24; font-weight:bold;">Console Warn:</span> ' + Array.from(arguments).join(' ');
+                overlay.appendChild(div);
+            }
+            originalConsoleWarn.apply(console, arguments);
+        };
+
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            var overlay = document.getElementById('debug-log-overlay');
+            if (overlay) {
+                overlay.style.display = 'block';
+                var div = document.createElement('div');
+                div.style.marginBottom = '8px';
+                div.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+                div.style.paddingBottom = '4px';
+                var filename = url ? url.substring(url.lastIndexOf('/') + 1) : 'unknown';
+                div.innerHTML = '<span style="color:#ff3366;">Error:</span> ' + msg + '<br><span style="color:#94a3b8; font-size:10px;">Line ' + lineNo + ' | ' + filename + '</span>';
+                overlay.appendChild(div);
+            }
+            return false;
+        };
+    </script>
+
+    <!-- JavaScript script bundles -->
+    <script src="js/audio.js"></script>
+    <script src="js/network.js"></script>
+    <script src="js/puzzles.js"></script>
+    <script src="js/multiplayer.js"></script>
+    <script src="js/ui.js"></script>
+</body>
+</html>
