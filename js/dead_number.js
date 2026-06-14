@@ -23,7 +23,7 @@ const DeadNumberGame = {
     pvpRole: 'host', // 'host' or 'join'
     roomId: null,
     client: null,
-    playerName: 'Player',
+    playerName: '',
     opponentName: 'Challenger',
     myClientId: 'p_' + Math.random().toString(36).substr(2, 9),
     isHost: false,
@@ -233,13 +233,13 @@ const DeadNumberGame = {
         // Player Name Input Setup
         const nameField = document.getElementById('player-name-input');
         if (nameField) {
-            const savedName = localStorage.getItem('DeadNumberPlayerName') || 'Player';
+            const savedName = localStorage.getItem('DeadNumberPlayerName') || '';
             nameField.value = savedName;
             this.playerName = savedName;
 
             nameField.oninput = () => {
                 const val = nameField.value.trim();
-                this.playerName = val || 'Player';
+                this.playerName = val;
                 localStorage.setItem('DeadNumberPlayerName', this.playerName);
             };
         }
