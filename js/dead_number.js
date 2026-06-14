@@ -68,11 +68,11 @@ const DeadNumberGame = {
         lastClaimedDaily: null
     },
 
-    init() {
+    async init() {
         this.loadStats();
         this.fetchRemoteConfig();
         this.initH5GamesSdk();
-        this.initCrazyGamesSDK();
+        await this.initCrazyGamesSDK();
         this.setupEventListeners();
         this.updateSliderRangeForDifficulty();
         this.showScreen('setup-screen');
@@ -2139,12 +2139,14 @@ const DeadNumberGame = {
         document.head.appendChild(script);
     },
 
-    initCrazyGamesSDK() {
+    async initCrazyGamesSDK() {
         if (window.CrazyGames && window.CrazyGames.SDK) {
             console.log("[Ads] CrazyGames SDK detected, initializing...");
-            this.crazySDK = window.CrazyGames.SDK;
-            
             try {
+                await window.CrazyGames.SDK.init();
+                this.crazySDK = window.CrazyGames.SDK;
+                console.log("[Ads] CrazyGames SDK successfully initialized!");
+                
                 this.crazySDK.addEventListener('mute', () => {
                     console.log("[Audio] Mute event received from CrazyGames");
                     this.muteGameAudio();
@@ -2154,7 +2156,7 @@ const DeadNumberGame = {
                     this.unmuteGameAudio();
                 });
             } catch (e) {
-                console.warn("[Ads] Failed to register CrazyGames audio listeners:", e);
+                console.warn("[Ads] Failed to initialize CrazyGames SDK:", e);
             }
         } else {
             console.log("[Ads] CrazyGames SDK not detected on window (yet).");
