@@ -1859,7 +1859,9 @@ const DeadNumberGame = {
                     this.currentTotal = room.currentTotal;
                     this.currentTurn = room.currentTurn;
                     this.history = room.history;
-                    this.isGameOver = room.isGameOver;
+                    if (eventStage !== 'game-over') {
+                        this.isGameOver = room.isGameOver;
+                    }
 
                     // Always synchronize the Setup UI display and slider for both Host and Challenger
                     const displayVal = document.getElementById('dead-num-display-val');
