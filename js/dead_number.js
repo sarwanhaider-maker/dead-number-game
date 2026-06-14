@@ -49,7 +49,7 @@ const DeadNumberGame = {
     opponentWins: 0,
 
     // Remote Configuration for Dynamic Server URL
-    remoteConfigUrl: 'https://raw.githubusercontent.com/sarwanhaider-maker/dead-number-game/main/config.json',
+    remoteConfigUrl: 'https://raw.githubusercontent.com/zaesargames/dead-number-game/main/config.json',
     resolvedServerUrl: null, // Fetched dynamically
     defaultProductionWsUrl: 'wss://dead-number-game.onrender.com',
     isSearchingMatch: false,
@@ -2378,7 +2378,7 @@ const DeadNumberGame = {
         
         let shareUrl = window.location.href;
         if (!shareUrl.startsWith('http') || shareUrl.includes('localhost') || shareUrl.includes('127.0.0.1')) {
-            shareUrl = 'https://sarwanhaider-maker.github.io/dead-number-game/dead_number.html';
+            shareUrl = 'https://zaesargames.github.io/dead-number-game/dead_number.html';
         }
         
         if (platform === 'facebook') {
