@@ -32,9 +32,9 @@ const DeadNumberGame = {
     history: [],
 
     // Remote Configuration for Dynamic Server URL
-    remoteConfigUrl: 'https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/dead-number-config/main/config.json',
+    remoteConfigUrl: 'https://raw.githubusercontent.com/sarwanhaider-maker/dead-number-game/main/config.json',
     resolvedServerUrl: null, // Fetched dynamically
-    defaultProductionWsUrl: 'wss://dead-number-server.onrender.com', // Replace with your actual Render URL
+    defaultProductionWsUrl: 'wss://dead-number-game.onrender.com',
 
     // Stats & Shop Object
     stats: {
