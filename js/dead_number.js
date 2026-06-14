@@ -14,6 +14,9 @@ const DeadNumberGame = {
     turnTimer: 5.0,
     timerInterval: null,
     isGameOver: false,
+    isAdPlaying: false,
+    isTutorial: false,
+    tutorialStep: 0,
     
     // TTS Voice
     voiceEnabled: true,
@@ -258,6 +261,41 @@ const DeadNumberGame = {
     },
 
     setupEventListeners() {
+        // Tutorial click handlers
+        const btnPlayTutorial = document.getElementById('btn-play-tutorial');
+        if (btnPlayTutorial) {
+            btnPlayTutorial.onclick = () => {
+                this.playClickSound();
+                this.startTutorialMode();
+            };
+        }
+
+        const btnTutorialExit = document.getElementById('btn-tutorial-exit');
+        if (btnTutorialExit) {
+            btnTutorialExit.onclick = () => {
+                this.playClickSound();
+                this.exitTutorialMode();
+            };
+        }
+
+        const btnTutorialModalAction = document.getElementById('btn-tutorial-modal-action');
+        if (btnTutorialModalAction) {
+            btnTutorialModalAction.onclick = () => {
+                this.playClickSound();
+                const overlay = document.getElementById('tutorial-modal-overlay');
+                if (overlay) overlay.style.display = 'none';
+
+                if (this.tutorialStep === 0) {
+                    // Start the gameplay step
+                    this.tutorialStep = 1;
+                    this.startTurn();
+                } else {
+                    // Tutorial is complete, return to lobby
+                    this.exitTutorialMode();
+                }
+            };
+        }
+
         // Player Name Input Setup
         const nameField = document.getElementById('player-name-input');
         if (nameField) {
@@ -606,10 +644,23 @@ const DeadNumberGame = {
                 this.playClickSound();
                 if (this.gameMode !== 'bot' || this.currentTurn !== 'player' || this.buyTimeUsedThisTurn || this.isGameOver) return;
                 
+                // Immediately freeze timer & disable inputs to avoid double clicks or timeout races
+                clearInterval(this.timerInterval);
+                this.timerInterval = null;
+                this.enableChoiceButtons(false);
+                this.isAdPlaying = true;
+                
                 btnLifelineTime.style.display = 'none';
                 this.buyTimeUsedThisTurn = true;
 
                 this.showAd('rewarded', () => {
+                    this.isAdPlaying = false;
+                    
+                    // Re-enable choices if we are still active
+                    if (this.currentTurn === 'player' && !this.isGameOver) {
+                        this.enableChoiceButtons(true);
+                    }
+                    
                     const maxDuration = this.getTurnDuration();
                     this.turnTimer = maxDuration;
                     const timerText = document.getElementById('timer-digits');
@@ -618,6 +669,9 @@ const DeadNumberGame = {
                         timerText.classList.remove('warning');
                     }
                     this.speak("Time extended.");
+                    
+                    // Clear again just in case another handler created one
+                    clearInterval(this.timerInterval);
                     
                     const startTime = Date.now();
                     const initialTimer = this.turnTimer;
@@ -1050,6 +1104,11 @@ const DeadNumberGame = {
         if (this.isGameOver) return;
         
         clearInterval(this.timerInterval);
+        
+        if (this.isTutorial) {
+            this.runTutorialState();
+            return;
+        }
         const maxDuration = this.getTurnDuration();
         this.turnTimer = maxDuration;
         
@@ -1150,7 +1209,20 @@ const DeadNumberGame = {
     },
 
     selectNumber(value) {
-        if (this.isGameOver) return;
+        if (this.isGameOver || this.isAdPlaying) return;
+
+        if (this.isTutorial) {
+            // Intercept and validate tutorial moves
+            if (this.tutorialStep === 1 && value === 1) {
+                // Player chooses +1 when total is 0 (value is 1)
+                this.tutorialStep = 2;
+            } else if (this.tutorialStep === 3 && value === 5) {
+                // Player chooses +1 when total is 4 (value is 5)
+                this.tutorialStep = 4;
+            } else {
+                return; // Disallow any other choice
+            }
+        }
 
         // Capture rollback state BEFORE changing any values, if vs Bot, player turn, and revive not used yet
         if (this.gameMode === 'bot' && this.currentTurn === 'player' && !this.reviveUsedThisGame) {
@@ -2465,6 +2537,193 @@ const DeadNumberGame = {
                 this.shareScore('copy');
             }
         }
+    },
+
+    startTutorialMode() {
+        this.isTutorial = true;
+        this.tutorialStep = 0;
+        
+        // Hide setup screen, show arena screen
+        this.showScreen('arena-screen');
+        
+        // Show the tutorial guide banner
+        const banner = document.getElementById('tutorial-guide-banner');
+        if (banner) banner.style.display = 'block';
+        
+        // Set game settings for tutorial
+        this.deadNumber = 6;
+        this.currentTotal = 0;
+        this.currentTurn = 'player';
+        this.isGameOver = false;
+        this.history = ["Tutorial Nim Duel Initialized. Dead Number is 6!"];
+        
+        const displayDead = document.getElementById('display-dead-num');
+        if (displayDead) displayDead.textContent = "6";
+        
+        this.updateUI();
+        this.syncHistoryLog();
+        
+        // Hide normal results button, disable other stuff
+        const btnLifelineTime = document.getElementById('btn-lifeline-time');
+        if (btnLifelineTime) btnLifelineTime.style.display = 'none';
+        
+        // Show intro modal
+        this.showTutorialIntroOverlay();
+    },
+
+    showTutorialIntroOverlay() {
+        const title = document.getElementById('tutorial-modal-title');
+        const desc = document.getElementById('tutorial-modal-desc');
+        const actionBtn = document.getElementById('btn-tutorial-modal-action');
+        const overlay = document.getElementById('tutorial-modal-overlay');
+        
+        if (title) title.textContent = "NIM DUEL TUTORIAL";
+        if (desc) desc.innerHTML = "Welcome to Dead Number! In this quick guided match, you will learn the core rules of the game.<br><br>The Dead Number is <strong>6</strong>. Your goal is to avoid reaching or exceeding 6. If you choose a number that makes the total 6, you lose!";
+        if (actionBtn) actionBtn.textContent = "Start Tutorial";
+        if (overlay) overlay.style.display = 'flex';
+    },
+
+    showTutorialCompleteOverlay() {
+        const title = document.getElementById('tutorial-modal-title');
+        const desc = document.getElementById('tutorial-modal-desc');
+        const actionBtn = document.getElementById('btn-tutorial-modal-action');
+        const overlay = document.getElementById('tutorial-modal-overlay');
+        
+        if (title) title.textContent = "TUTORIAL COMPLETE!";
+        if (desc) desc.innerHTML = "Congratulations! You successfully forced the Bot to hit the Dead Number (6) and won the duel!<br><br>You now understand the core strategy of Dead Number. Keep the total at numbers that force your opponent to take the final step!";
+        if (actionBtn) actionBtn.textContent = "Return to Lobby";
+        if (overlay) overlay.style.display = 'flex';
+    },
+
+    runTutorialState() {
+        const guideText = document.getElementById('tutorial-guide-text');
+        const displayTurn = document.getElementById('display-turn');
+        const timerText = document.getElementById('timer-digits');
+        
+        if (timerText) timerText.textContent = "∞";
+        
+        // Clear all previous choice highlights
+        for (let i = 1; i <= 4; i++) {
+            const btn = document.getElementById(`btn-choice-${i}`);
+            if (btn) {
+                btn.style.border = '';
+                btn.style.boxShadow = '';
+            }
+        }
+        
+        if (this.currentTurn === 'player') {
+            this.enableChoiceButtons(false); // Disable all first
+            
+            if (this.tutorialStep === 1) {
+                if (guideText) guideText.innerHTML = "<strong>Your Turn!</strong> The Dead Number is 6.<br>Click <strong>+1</strong> to add 1 to the total.";
+                if (displayTurn) {
+                    displayTurn.textContent = "YOUR TURN";
+                    displayTurn.style.color = "var(--color-blue)";
+                }
+                
+                // Enable ONLY +1 button
+                const btn1 = document.getElementById('btn-choice-1');
+                if (btn1) {
+                    btn1.disabled = false;
+                    btn1.style.border = "2px solid var(--color-gold)";
+                    btn1.style.boxShadow = "0 0 15px var(--color-gold)";
+                }
+            } else if (this.tutorialStep === 3) {
+                if (guideText) guideText.innerHTML = "<strong>Your Turn!</strong> The total is 4. Dead Number is 6.<br>If you select +2, you reach 6 and lose!<br>Click <strong>+1</strong> to make the total 5 and trap the Bot!";
+                if (displayTurn) {
+                    displayTurn.textContent = "YOUR TURN";
+                    displayTurn.style.color = "var(--color-blue)";
+                }
+                
+                // Enable ONLY +1 button (+1 sets total to 5)
+                const btn1 = document.getElementById('btn-choice-1');
+                if (btn1) {
+                    btn1.disabled = false;
+                    btn1.style.border = "2px solid var(--color-gold)";
+                    btn1.style.boxShadow = "0 0 15px var(--color-gold)";
+                }
+            }
+        } else if (this.currentTurn === 'bot') {
+            this.enableChoiceButtons(false);
+            
+            if (this.tutorialStep === 2) {
+                if (guideText) guideText.innerHTML = "<strong>Bot's Turn!</strong> The Bot is calculating its move...";
+                if (displayTurn) {
+                    displayTurn.textContent = "BOT'S TURN";
+                    displayTurn.style.color = "var(--color-gold)";
+                }
+                
+                setTimeout(() => {
+                    // Bot plays +3 (total 1 + 3 = 4)
+                    this.currentTotal = 4;
+                    this.playChoiceSound();
+                    this.updateUI();
+                    
+                    this.history.push("Bot selected: 4 (+3)");
+                    this.syncHistoryLog();
+                    this.speak("Bot plays 4");
+                    
+                    this.currentTurn = 'player';
+                    this.tutorialStep = 3;
+                    
+                    setTimeout(() => {
+                        this.startTurn();
+                    }, 1000);
+                }, 1500);
+            } else if (this.tutorialStep === 4) {
+                if (guideText) guideText.innerHTML = "<strong>Bot's Turn!</strong> The total is 5. The Bot is forced to hit 6...";
+                if (displayTurn) {
+                    displayTurn.textContent = "BOT'S TURN";
+                    displayTurn.style.color = "var(--color-gold)";
+                }
+                
+                setTimeout(() => {
+                    // Bot is forced to play +1 (total 5 + 1 = 6)
+                    this.currentTotal = 6;
+                    this.playChoiceSound();
+                    this.updateUI();
+                    
+                    this.history.push("Bot selected: 6 (+1)");
+                    this.syncHistoryLog();
+                    this.speak("Bot plays 6");
+                    
+                    setTimeout(() => {
+                        // Tutorial victory!
+                        this.isGameOver = true;
+                        this.playVictorySound();
+                        
+                        if (guideText) {
+                            guideText.innerHTML = "<strong>Victory!</strong> The Bot hit the Dead Number (6) and lost!<br>You solved the puzzle and won the duel!";
+                        }
+                        this.showTutorialCompleteOverlay();
+                    }, 1200);
+                }, 1500);
+            }
+        }
+    },
+
+    exitTutorialMode() {
+        this.isTutorial = false;
+        
+        // Hide tutorial guide banner
+        const banner = document.getElementById('tutorial-guide-banner');
+        if (banner) banner.style.display = 'none';
+        
+        // Hide tutorial modal overlay
+        const modal = document.getElementById('tutorial-modal-overlay');
+        if (modal) modal.style.display = 'none';
+        
+        // Reset choice button styles
+        for (let i = 1; i <= 4; i++) {
+            const btn = document.getElementById(`btn-choice-${i}`);
+            if (btn) {
+                btn.style.border = '';
+                btn.style.boxShadow = '';
+            }
+        }
+        
+        // Show setup screen
+        this.showScreen('setup-screen');
     }
 };
 
