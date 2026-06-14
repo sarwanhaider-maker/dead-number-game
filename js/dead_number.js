@@ -75,7 +75,7 @@ const DeadNumberGame = {
         this.loadStats();
         this.fetchRemoteConfig();
         this.initH5GamesSdk();
-        await this.initCrazyGamesSDK();
+        this.initCrazyGamesSDK();
         this.setupEventListeners();
         this.updateSliderRangeForDifficulty();
         this.showScreen('setup-screen');
