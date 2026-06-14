@@ -24,6 +24,7 @@ const wss = new WebSocketServer({ server });
 
 // Map of roomId -> roomState
 const rooms = new Map();
+const matchmakingQueue = [];
 
 // Generate a unique 4-digit numeric room code
 function generateRoomCode() {
@@ -337,6 +338,79 @@ wss.on('connection', (ws) => {
                     break;
                 }
 
+                case 'JOIN_QUICK_MATCH': {
+                    const playerName = data.playerName || 'Challenger';
+                    
+                    // Prevent duplicate queue entries
+                    if (matchmakingQueue.includes(ws)) {
+                        return;
+                    }
+
+                    console.log(`[Server] Player ${playerName} joined matchmaking queue.`);
+                    
+                    if (matchmakingQueue.length > 0) {
+                        // Match found! Pair them
+                        const hostSocket = matchmakingQueue.shift();
+                        
+                        // Verify the host is still active
+                        if (hostSocket.readyState !== 1) {
+                            matchmakingQueue.push(ws);
+                            ws.send(JSON.stringify({ type: 'WAITING_FOR_OPPONENT' }));
+                            return;
+                        }
+
+                        const code = generateRoomCode();
+                        const hostName = hostSocket.playerName || 'Host';
+                        
+                        const newRoom = {
+                            id: code,
+                            hostSocket: hostSocket,
+                            challengerSocket: ws,
+                            hostName: hostName,
+                            challengerName: playerName,
+                            deadNumber: 25,
+                            currentTotal: 0,
+                            currentTurn: Math.random() < 0.5 ? 'player' : 'opponent',
+                            isGameOver: false,
+                            history: [],
+                            difficulty: 'hard', // Default to hard for Quick Match (5s timers)
+                            firstTurn: 'player',
+                            turnTimer: getTurnDuration('hard'),
+                            timerInterval: null,
+                            lastActiveTime: Date.now()
+                        };
+
+                        rooms.set(code, newRoom);
+                        
+                        hostSocket.currentRoomId = code;
+                        hostSocket.isHostConnection = true;
+                        
+                        ws.currentRoomId = code;
+                        ws.isHostConnection = false;
+
+                        broadcastState(newRoom, 'start-game');
+                        console.log(`[Server] Quick Match paired. Room ${code} created: ${hostName} vs ${playerName}.`);
+                        
+                        setTimeout(() => {
+                            startRoomTimer(newRoom);
+                        }, 1200);
+                    } else {
+                        ws.playerName = playerName;
+                        matchmakingQueue.push(ws);
+                        ws.send(JSON.stringify({ type: 'WAITING_FOR_OPPONENT' }));
+                    }
+                    break;
+                }
+
+                case 'LEAVE_QUICK_MATCH': {
+                    const idx = matchmakingQueue.indexOf(ws);
+                    if (idx !== -1) {
+                        matchmakingQueue.splice(idx, 1);
+                        console.log('[Server] Player left matchmaking queue.');
+                    }
+                    break;
+                }
+
                 default:
                     console.warn(`[Server] Unknown action type received: ${type}`);
             }
@@ -347,6 +421,13 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
+        // Remove from matchmaking queue if present
+        const qIdx = matchmakingQueue.indexOf(ws);
+        if (qIdx !== -1) {
+            matchmakingQueue.splice(qIdx, 1);
+            console.log('[Server] Removed disconnected player from matchmaking queue.');
+        }
+
         const code = ws.currentRoomId;
         if (code) {
             const room = rooms.get(code);

@@ -65,9 +65,10 @@
                         </div>
                     </div>
 
-                    <div class="toggle-grid" style="margin-bottom: 1rem;">
-                        <button class="btn-toggle btn-pvp-role active" id="btn-role-host" data-role="host">Host Duel</button>
-                        <button class="btn-toggle btn-pvp-role" id="btn-role-join" data-role="join">Join Duel</button>
+                    <div class="toggle-grid" style="margin-bottom: 1rem; display: flex; gap: 0.4rem;">
+                        <button class="btn-toggle btn-pvp-role active" id="btn-role-host" style="flex: 1;" data-role="host">Host Room</button>
+                        <button class="btn-toggle btn-pvp-role" id="btn-role-join" style="flex: 1;" data-role="join">Join Room</button>
+                        <button class="btn-toggle btn-pvp-role" id="btn-role-quick" style="flex: 1;" data-role="quick">Quick Match</button>
                     </div>
 
                     <!-- Host View -->
@@ -90,6 +91,15 @@
                             <input type="text" id="pvp-room-input" placeholder="e.g. 1234" maxlength="4" style="width:100%; padding:0.8rem; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#fff; font-family:var(--font-cyber); font-size:1.2rem; text-align:center; letter-spacing:4px; outline:none;">
                         </div>
                         <button class="btn-primary" id="btn-join-duel" style="background: linear-gradient(90deg, #ffaa00, #ff5500); box-shadow: 0 4px 15px rgba(255,85,0,0.3);">Connect to Duel</button>
+                    </div>
+
+                    <!-- Quick Match View -->
+                    <div id="pvp-quick-view" style="display: none;">
+                        <div class="setup-group">
+                            <label class="setup-label" for="pvp-quick-name">Your Name</label>
+                            <input type="text" id="pvp-quick-name" placeholder="Enter name" maxlength="12" style="width:100%; padding:0.8rem; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#fff; font-family:var(--font-body); font-size:1rem; outline:none; margin-bottom:1rem;">
+                        </div>
+                        <button class="btn-primary" id="btn-quick-match" style="background: linear-gradient(90deg, #1ba0aa, #147a82); box-shadow: 0 4px 15px rgba(27,160,170,0.3);">Find Opponent</button>
                     </div>
                 </div>
                 

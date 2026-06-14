@@ -35,6 +35,7 @@ const DeadNumberGame = {
     remoteConfigUrl: 'https://raw.githubusercontent.com/sarwanhaider-maker/dead-number-game/main/config.json',
     resolvedServerUrl: null, // Fetched dynamically
     defaultProductionWsUrl: 'wss://dead-number-game.onrender.com',
+    isSearchingMatch: false,
 
     // Stats & Shop Object
     stats: {
@@ -306,15 +307,17 @@ const DeadNumberGame = {
             };
         }
 
-        // Toggles for PvP Roles (Host vs Join)
+        // Toggles for PvP Roles (Host, Join, Quick Match)
         const btnRoleHost = document.getElementById('btn-role-host');
         const btnRoleJoin = document.getElementById('btn-role-join');
+        const btnRoleQuick = document.getElementById('btn-role-quick');
 
-        if (btnRoleHost && btnRoleJoin) {
+        if (btnRoleHost && btnRoleJoin && btnRoleQuick) {
             btnRoleHost.onclick = () => {
                 this.playClickSound();
                 btnRoleHost.classList.add('active');
                 btnRoleJoin.classList.remove('active');
+                btnRoleQuick.classList.remove('active');
                 this.pvpRole = 'host';
                 this.updatePvPRoleUI();
             };
@@ -323,8 +326,34 @@ const DeadNumberGame = {
                 this.playClickSound();
                 btnRoleJoin.classList.add('active');
                 btnRoleHost.classList.remove('active');
+                btnRoleQuick.classList.remove('active');
                 this.pvpRole = 'join';
                 this.updatePvPRoleUI();
+            };
+
+            btnRoleQuick.onclick = () => {
+                this.playClickSound();
+                btnRoleQuick.classList.add('active');
+                btnRoleHost.classList.remove('active');
+                btnRoleJoin.classList.remove('active');
+                this.pvpRole = 'quick';
+                this.updatePvPRoleUI();
+            };
+        }
+
+        // Quick Match Find/Cancel Button
+        const btnQuickMatch = document.getElementById('btn-quick-match');
+        if (btnQuickMatch) {
+            btnQuickMatch.onclick = () => {
+                this.playClickSound();
+                if (this.isSearchingMatch) {
+                    this.cancelQuickMatchSearch();
+                } else {
+                    const nameInput = document.getElementById('pvp-quick-name');
+                    const name = nameInput ? nameInput.value.trim() : 'Player';
+                    this.playerName = name || 'Player';
+                    this.startQuickMatchSearch();
+                }
             };
         }
 
@@ -512,6 +541,7 @@ const DeadNumberGame = {
     updatePvPRoleUI() {
         const hostView = document.getElementById('pvp-host-view');
         const joinView = document.getElementById('pvp-join-view');
+        const quickView = document.getElementById('pvp-quick-view');
         const startBtn = document.getElementById('btn-start-game');
         const turnGroup = document.getElementById('setup-group-turn');
         const slider = document.getElementById('dead-num-slider');
@@ -519,6 +549,7 @@ const DeadNumberGame = {
         if (this.pvpRole === 'host') {
             if (hostView) hostView.style.display = 'block';
             if (joinView) joinView.style.display = 'none';
+            if (quickView) quickView.style.display = 'none';
             if (startBtn) {
                 startBtn.style.display = 'block';
                 startBtn.disabled = !this.opponentConnected;
@@ -533,16 +564,67 @@ const DeadNumberGame = {
             this.isHost = true;
             this.playerName = 'Host';
             this.hostRoom();
-        } else {
+        } else if (this.pvpRole === 'join') {
             if (hostView) hostView.style.display = 'none';
             if (joinView) joinView.style.display = 'block';
+            if (quickView) quickView.style.display = 'none';
             if (startBtn) startBtn.style.display = 'none';
             if (turnGroup) turnGroup.style.display = 'none';
             if (slider) slider.disabled = true; // Challenger waits for Host's dead number
             
             this.isHost = false;
             this.disconnectNetwork();
+        } else if (this.pvpRole === 'quick') {
+            if (hostView) hostView.style.display = 'none';
+            if (joinView) joinView.style.display = 'none';
+            if (quickView) quickView.style.display = 'block';
+            if (startBtn) startBtn.style.display = 'none';
+            if (turnGroup) turnGroup.style.display = 'none';
+            if (slider) slider.disabled = true;
+
+            this.isHost = false;
+            this.disconnectNetwork();
         }
+    },
+
+    startQuickMatchSearch() {
+        this.isSearchingMatch = true;
+        const btn = document.getElementById('btn-quick-match');
+        const nameInput = document.getElementById('pvp-quick-name');
+        
+        if (btn) {
+            btn.textContent = 'Searching... (Tap to Cancel)';
+            btn.style.background = 'linear-gradient(90deg, #64748b, #475569)';
+        }
+        if (nameInput) nameInput.disabled = true;
+
+        this.connectNetwork((success) => {
+            if (success) {
+                this.sendAction('JOIN_QUICK_MATCH', { playerName: this.playerName });
+                this.speak("Searching for an online opponent.");
+            } else {
+                this.cancelQuickMatchSearch();
+                alert("Could not connect to multiplayer server.");
+            }
+        });
+    },
+
+    cancelQuickMatchSearch() {
+        this.isSearchingMatch = false;
+        const btn = document.getElementById('btn-quick-match');
+        const nameInput = document.getElementById('pvp-quick-name');
+        
+        if (btn) {
+            btn.textContent = 'Find Opponent';
+            btn.style.background = 'linear-gradient(90deg, #1ba0aa, #147a82)';
+        }
+        if (nameInput) nameInput.disabled = false;
+
+        if (this.connected) {
+            this.sendAction('LEAVE_QUICK_MATCH');
+        }
+        this.disconnectNetwork();
+        this.speak("Matchmaking canceled.");
     },
 
     showScreen(screenId) {
@@ -1274,6 +1356,11 @@ const DeadNumberGame = {
                     alert(message.message);
                     this.disconnectNetwork();
                     this.showScreen('setup-screen');
+                    break;
+                }
+
+                case 'WAITING_FOR_OPPONENT': {
+                    console.log("[Network] Waiting for opponent in matchmaking queue...");
                     break;
                 }
 
