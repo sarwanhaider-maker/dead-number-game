@@ -1719,6 +1719,15 @@ const DeadNumberGame = {
                     break;
                 }
 
+                case 'ONLINE_COUNT': {
+                    const count = message.count;
+                    const txt = document.getElementById('net-status-text');
+                    if (txt && this.connected) {
+                        txt.textContent = `Online (${count} active)`;
+                    }
+                    break;
+                }
+
                 case 'DRAFT_UPDATE': {
                     const room = message.room;
                     this.isDraftActive = room.isDraftActive;

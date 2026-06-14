@@ -166,6 +166,8 @@ wss.on('connection', (ws) => {
     ws.currentRoomId = null;
     ws.isHostConnection = false;
 
+    broadcastOnlinePlayerCount();
+
     ws.on('message', (messageString) => {
         try {
             const data = JSON.parse(messageString.toString());
@@ -634,6 +636,7 @@ wss.on('connection', (ws) => {
             }
         }
         console.log('[Server] Client connection closed.');
+        broadcastOnlinePlayerCount();
     });
 });
 
@@ -720,6 +723,19 @@ function broadcastDraftState(room) {
     if (room.challengerSocket && room.challengerSocket.readyState === 1) {
         room.challengerSocket.send(payload);
     }
+}
+
+function broadcastOnlinePlayerCount() {
+    const count = wss.clients.size;
+    const payload = JSON.stringify({
+        type: 'ONLINE_COUNT',
+        count: count
+    });
+    wss.clients.forEach(client => {
+        if (client.readyState === 1) {
+            client.send(payload);
+        }
+    });
 }
 
 server.listen(PORT, () => {

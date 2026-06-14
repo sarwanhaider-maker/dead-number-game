@@ -12,6 +12,7 @@ rooms = {}
 
 # Global matchmaking queue
 matchmaking_queue = []
+connected_clients = set()
 
 def get_turn_duration(difficulty):
     return 4.0  # PvP matches always have a 4.0s turn timer
@@ -78,6 +79,16 @@ async def broadcast_draft_state(room):
 async def send_error(ws, message):
     if ws and ws.state == State.OPEN:
         await ws.send(json.dumps({'type': 'ERROR', 'message': message}))
+
+async def broadcast_online_count():
+    count = len(connected_clients)
+    payload = json.dumps({
+        'type': 'ONLINE_COUNT',
+        'count': count
+    })
+    sockets_to_send = [ws for ws in connected_clients if ws.state == State.OPEN]
+    if sockets_to_send:
+        await asyncio.gather(*(ws.send(payload) for ws in sockets_to_send), return_exceptions=True)
 
 async def handle_timeout(room):
     if room['isGameOver']:
@@ -195,6 +206,9 @@ async def handler(websocket):
     
     websocket.current_room_id = None
     websocket.is_host_connection = False
+
+    connected_clients.add(websocket)
+    await broadcast_online_count()
 
     try:
         async for message in websocket:
@@ -613,6 +627,9 @@ async def handler(websocket):
                     pass
             rooms.pop(code, None)
             print(f"[Server] Room {code} cleaned up due to player disconnection.")
+            
+        connected_clients.discard(websocket)
+        await broadcast_online_count()
 
 async def main():
     async with websockets.serve(handler, "0.0.0.0", PORT):
