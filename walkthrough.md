@@ -350,6 +350,28 @@ Split the cluttered single-page lobby setup into 3 clean, step-by-step wizard pa
 * **Back Navigation support:** Added click listeners for `Back` buttons on Steps 2 and 3 to let players tweak settings before initializing their duels.
 * **PvP Rematch Lobby Routing:** Fixed the rematch navigation so that active PvP room sessions bypass the Step 1 profile screen. The Host is sent directly to Step 3 (Stakes / Dead Number Selection) to instantly configure the next game, while the Guest is routed to Step 2 (waiting for Host's choice), avoiding redundant name registration forms.
 
+---
+
+## Part 18: PvP 7s Clock & Adaptive Difficulty scaling
+
+We implemented symmetrical turn duration updates for PvP matches and a smart player-retention adaptive difficulty helper:
+
+### 1. Symmetrical PvP 7.0-Second Turn Clock
+* **PvP Timer Raise:** Symmetrically raised the PvP turn timer to **7.0 seconds** (from 4.0s) in:
+  * Client engine: `js/dead_number.js` inside `getTurnDuration()`.
+  * Node.js production server: `server.js` inside `getTurnDuration()`.
+  * Python local server: `server.py` inside `get_turn_duration()`.
+* This prevents timeouts and out-of-sync ticks across clients during PvP matches.
+
+### 2. Adaptive Bot Difficulty scaling
+* **Consecutive Losses Track:** Added `botLossStreak` state. On bot defeat, the game increments this counter.
+* **Auto-Downgrade:** If a player loses **2 consecutive bot matches**:
+  * Automatically lowers the difficulty setting down one tier (Hard -> Medium, or Medium -> Easy).
+  * Appends a themed announcement text toast on the results screen: `[ADAPTED] Bot difficulty automatically lowered to X to assist training!`.
+  * Triggers Text-to-Speech to support the player: *"Lowering bot difficulty to X to help you practice..."*.
+  * Syncs the lobby selectors and slider bounds so they are configured correctly for the next game automatically.
+* **Reset on Win:** Resets `botLossStreak` to `0` when the player wins.
+
 
 
 

@@ -15,7 +15,7 @@ matchmaking_queue = []
 connected_clients = set()
 
 def get_turn_duration(difficulty):
-    return 4.0  # PvP matches always have a 4.0s turn timer
+    return 7.0  # PvP matches always have a 7.0s turn timer
 
 async def broadcast_state(room, event_stage='update', extra_data=None):
     if extra_data is None:

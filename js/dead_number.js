@@ -10,6 +10,7 @@ const DeadNumberGame = {
     difficulty: 'easy', // 'easy', 'medium', 'hard'
     firstTurn: 'player', // 'player' or 'bot' (or 'opponent' in PvP)
     strategyHelper: true, // Default to ON for vs Bot mode
+    botLossStreak: 0, // Track consecutive losses to adapt difficulty
     
     // Timer properties
     turnTimer: 5.0,
@@ -125,7 +126,7 @@ const DeadNumberGame = {
             if (this.difficulty === 'medium') return 5.0;
             return 3.0; // hard
         }
-        return 4.0; // 4s turn timer for PvP
+        return 7.0; // 7s turn timer for PvP
     },
 
     updateSliderRangeForDifficulty() {
@@ -1656,8 +1657,11 @@ const DeadNumberGame = {
                 this.stats.botWins++;
                 this.stats.activeStreak++;
                 this.stats.coins = (this.stats.coins || 0) + 50; // Add 50 coins for bot win
+                this.botLossStreak = 0; // Reset bot loss streak on win
             } else {
                 this.stats.activeStreak = 0;
+                this.botLossStreak = (this.botLossStreak || 0) + 1; // Increment bot loss streak on defeat
+                this.handleAdaptiveDifficulty(); // Check and adapt difficulty
             }
             this.saveStats();
 
@@ -1713,6 +1717,48 @@ const DeadNumberGame = {
                 this.crazySDK.game.happytime();
             } catch (e) {
                 console.warn(e);
+            }
+        }
+    },
+
+    handleAdaptiveDifficulty() {
+        if (this.botLossStreak >= 2) {
+            let adjusted = false;
+            let oldDiff = this.difficulty;
+            let newDiff = this.difficulty;
+
+            if (this.difficulty === 'hard') {
+                this.difficulty = 'medium';
+                newDiff = 'medium';
+                adjusted = true;
+            } else if (this.difficulty === 'medium') {
+                this.difficulty = 'easy';
+                newDiff = 'easy';
+                adjusted = true;
+            }
+
+            if (adjusted) {
+                this.botLossStreak = 0; // Reset streak after adapting
+                
+                // Delay so it displays cleanly after results screen shows
+                setTimeout(() => {
+                    const verdictText = document.getElementById('verdict-text');
+                    if (verdictText) {
+                        verdictText.innerHTML += `<br><span style="color: var(--color-blue); font-weight: bold; font-family: var(--font-cyber); font-size: 0.85rem; display: block; margin-top: 0.5rem; text-shadow: 0 0 8px rgba(27,160,170,0.3);">[ADAPTED] Bot difficulty automatically lowered to ${newDiff.toUpperCase()} to assist training!</span>`;
+                    }
+                    this.speak(`Lowering bot difficulty to ${newDiff} to help you practice. Strategy Assist is active.`);
+                    
+                    // Sync active status on difficulty buttons in lobby
+                    const diffButtons = document.querySelectorAll('.btn-diff');
+                    diffButtons.forEach(btn => {
+                        btn.classList.remove('active');
+                        if (btn.dataset.diff === newDiff) {
+                            btn.classList.add('active');
+                        }
+                    });
+                    
+                    this.updateSliderRangeForDifficulty();
+                }, 2000);
             }
         }
     },

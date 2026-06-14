@@ -37,7 +37,7 @@ function generateRoomCode() {
 
 // Get timer duration based on gameMode and difficulty (PvP matches are always 4.0s)
 function getTurnDuration(difficulty) {
-    return 4.0;
+    return 7.0;
 }
 
 // Clean up rooms periodically (e.g., inactive for over 1 hour)
