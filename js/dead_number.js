@@ -338,6 +338,15 @@ const DeadNumberGame = {
                 btnRoleJoin.classList.remove('active');
                 this.pvpRole = 'quick';
                 this.updatePvPRoleUI();
+
+                // Auto-focus name input for convenience
+                setTimeout(() => {
+                    const quickNameInput = document.getElementById('pvp-quick-name');
+                    if (quickNameInput) {
+                        quickNameInput.disabled = false;
+                        quickNameInput.focus();
+                    }
+                }, 100);
             };
         }
 
@@ -581,6 +590,9 @@ const DeadNumberGame = {
             if (startBtn) startBtn.style.display = 'none';
             if (turnGroup) turnGroup.style.display = 'none';
             if (slider) slider.disabled = true;
+
+            const nameInput = document.getElementById('pvp-quick-name');
+            if (nameInput) nameInput.disabled = false;
 
             this.isHost = false;
             this.disconnectNetwork();
@@ -1272,6 +1284,13 @@ const DeadNumberGame = {
             const type = message.type;
 
             switch (type) {
+                case 'ROLE_ASSIGNMENT': {
+                    this.isHost = message.isHost;
+                    this.roomId = message.roomId;
+                    console.log("[Network] Assigned PvP Role. Is Host: " + this.isHost + ", Room: " + this.roomId);
+                    break;
+                }
+
                 case 'ROOM_CREATED': {
                     this.roomId = message.roomId;
                     document.getElementById('pvp-room-code').textContent = this.roomId;

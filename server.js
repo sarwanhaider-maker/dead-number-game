@@ -388,6 +388,18 @@ wss.on('connection', (ws) => {
                         ws.currentRoomId = code;
                         ws.isHostConnection = false;
 
+                        // Send explicit role assignments to prevent first-turn desync
+                        hostSocket.send(JSON.stringify({
+                            type: 'ROLE_ASSIGNMENT',
+                            isHost: true,
+                            roomId: code
+                        }));
+                        ws.send(JSON.stringify({
+                            type: 'ROLE_ASSIGNMENT',
+                            isHost: false,
+                            roomId: code
+                        }));
+
                         broadcastState(newRoom, 'start-game');
                         console.log(`[Server] Quick Match paired. Room ${code} created: ${hostName} vs ${playerName}.`);
                         
