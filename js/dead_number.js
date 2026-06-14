@@ -23,7 +23,7 @@ const DeadNumberGame = {
     pvpRole: 'host', // 'host' or 'join'
     roomId: null,
     client: null,
-    playerName: 'Host',
+    playerName: 'Player',
     opponentName: 'Challenger',
     myClientId: 'p_' + Math.random().toString(36).substr(2, 9),
     isHost: false,
@@ -230,6 +230,20 @@ const DeadNumberGame = {
     },
 
     setupEventListeners() {
+        // Player Name Input Setup
+        const nameField = document.getElementById('player-name-input');
+        if (nameField) {
+            const savedName = localStorage.getItem('DeadNumberPlayerName') || 'Player';
+            nameField.value = savedName;
+            this.playerName = savedName;
+
+            nameField.oninput = () => {
+                const val = nameField.value.trim();
+                this.playerName = val || 'Player';
+                localStorage.setItem('DeadNumberPlayerName', this.playerName);
+            };
+        }
+
         // Slider value update
         const slider = document.getElementById('dead-num-slider');
         const display = document.getElementById('dead-num-display-val');
@@ -299,9 +313,17 @@ const DeadNumberGame = {
 
             btnModePvP.onclick = () => {
                 this.playClickSound();
+                const nameField = document.getElementById('player-name-input');
+                const nameVal = nameField ? nameField.value.trim() : '';
+                if (!nameVal) {
+                    alert('Please enter your name to play Online PvP!');
+                    if (nameField) nameField.focus();
+                    return;
+                }
                 btnModePvP.classList.add('active');
                 btnModeBot.classList.remove('active');
                 this.gameMode = 'pvp';
+                this.playerName = nameVal;
                 
                 if (diffGroup) diffGroup.style.display = 'none';
                 if (pvpPanel) pvpPanel.style.display = 'block';
@@ -319,38 +341,53 @@ const DeadNumberGame = {
         if (btnRoleHost && btnRoleJoin && btnRoleQuick) {
             btnRoleHost.onclick = () => {
                 this.playClickSound();
+                const nameField = document.getElementById('player-name-input');
+                const nameVal = nameField ? nameField.value.trim() : '';
+                if (!nameVal) {
+                    alert('Please enter your name to Host a Room!');
+                    if (nameField) nameField.focus();
+                    return;
+                }
                 btnRoleHost.classList.add('active');
                 btnRoleJoin.classList.remove('active');
                 btnRoleQuick.classList.remove('active');
                 this.pvpRole = 'host';
+                this.playerName = nameVal;
                 this.updatePvPRoleUI();
             };
 
             btnRoleJoin.onclick = () => {
                 this.playClickSound();
+                const nameField = document.getElementById('player-name-input');
+                const nameVal = nameField ? nameField.value.trim() : '';
+                if (!nameVal) {
+                    alert('Please enter your name to Join a Room!');
+                    if (nameField) nameField.focus();
+                    return;
+                }
                 btnRoleJoin.classList.add('active');
                 btnRoleHost.classList.remove('active');
                 btnRoleQuick.classList.remove('active');
                 this.pvpRole = 'join';
+                this.playerName = nameVal;
                 this.updatePvPRoleUI();
             };
 
             btnRoleQuick.onclick = () => {
                 this.playClickSound();
+                const nameField = document.getElementById('player-name-input');
+                const nameVal = nameField ? nameField.value.trim() : '';
+                if (!nameVal) {
+                    alert('Please enter your name for Quick Match!');
+                    if (nameField) nameField.focus();
+                    return;
+                }
                 btnRoleQuick.classList.add('active');
                 btnRoleHost.classList.remove('active');
                 btnRoleJoin.classList.remove('active');
                 this.pvpRole = 'quick';
+                this.playerName = nameVal;
                 this.updatePvPRoleUI();
-
-                // Auto-focus name input for convenience
-                setTimeout(() => {
-                    const quickNameInput = document.getElementById('pvp-quick-name');
-                    if (quickNameInput) {
-                        quickNameInput.disabled = false;
-                        quickNameInput.focus();
-                    }
-                }, 100);
             };
         }
 
@@ -362,9 +399,14 @@ const DeadNumberGame = {
                 if (this.isSearchingMatch) {
                     this.cancelQuickMatchSearch();
                 } else {
-                    const nameInput = document.getElementById('pvp-quick-name');
-                    const name = nameInput ? nameInput.value.trim() : 'Player';
-                    this.playerName = name || 'Player';
+                    const nameField = document.getElementById('player-name-input');
+                    const nameVal = nameField ? nameField.value.trim() : '';
+                    if (!nameVal) {
+                        alert('Please enter your name before searching!');
+                        if (nameField) nameField.focus();
+                        return;
+                    }
+                    this.playerName = nameVal;
                     this.startQuickMatchSearch();
                 }
             };
@@ -375,10 +417,14 @@ const DeadNumberGame = {
         if (btnJoinDuel) {
             btnJoinDuel.onclick = () => {
                 this.playClickSound();
-                const nameInput = document.getElementById('pvp-player-name');
+                const nameField = document.getElementById('player-name-input');
+                const nameVal = nameField ? nameField.value.trim() : '';
+                if (!nameVal) {
+                    alert('Please enter your name before connecting!');
+                    if (nameField) nameField.focus();
+                    return;
+                }
                 const codeInput = document.getElementById('pvp-room-input');
-                
-                const name = nameInput ? nameInput.value.trim() : 'Challenger';
                 const code = codeInput ? codeInput.value.trim() : '';
 
                 if (!code || code.length !== 4) {
@@ -388,7 +434,7 @@ const DeadNumberGame = {
 
                 btnJoinDuel.disabled = true;
                 btnJoinDuel.textContent = 'Connecting...';
-                this.playerName = name || 'Challenger';
+                this.playerName = nameVal;
                 this.joinRoom(code, this.playerName);
             };
         }
@@ -398,6 +444,15 @@ const DeadNumberGame = {
             startBtn.onclick = () => {
                 this.playClickSound();
                 if (this.gameMode === 'bot') {
+                    const nameField = document.getElementById('player-name-input');
+                    const nameVal = nameField ? nameField.value.trim() : '';
+                    if (!nameVal) {
+                        alert('Please enter your name to start the game!');
+                        if (nameField) nameField.focus();
+                        return;
+                    }
+                    this.playerName = nameVal;
+                    localStorage.setItem('DeadNumberPlayerName', this.playerName);
                     this.startGame();
                 } else if (this.gameMode === 'pvp') {
                     if (this.isDraftActive) {
@@ -673,7 +728,8 @@ const DeadNumberGame = {
             if (botTurnBtn) botTurnBtn.textContent = 'Challenger';
             
             this.isHost = true;
-            this.playerName = 'Host';
+            const nameField = document.getElementById('player-name-input');
+            this.playerName = (nameField && nameField.value.trim()) || 'Host';
             this.hostRoom();
         } else if (this.pvpRole === 'join') {
             if (hostView) hostView.style.display = 'none';
@@ -732,7 +788,7 @@ const DeadNumberGame = {
 
             if (draftStatus) {
                 if (isMyTurn) {
-                    draftStatus.textContent = "YOUR TURN TO SELECT DEAD NUMBER (20-100)";
+                    draftStatus.textContent = `${this.playerName.toUpperCase()}'S TURN TO SELECT DEAD NUMBER (20-100)`;
                     draftStatus.style.color = "var(--color-gold)";
                 } else {
                     const selectorName = this.selectionTurn === 'host' ? (room.hostName || 'Host') : (room.challengerName || 'Opponent');
@@ -978,7 +1034,7 @@ const DeadNumberGame = {
         if (turnIndicator) {
             if (this.gameMode === 'bot') {
                 if (isMyTurn) {
-                    turnIndicator.textContent = "YOUR TURN";
+                    turnIndicator.textContent = `${this.playerName.toUpperCase()}'S TURN`;
                     turnIndicator.style.color = "var(--color-blue)";
                 } else {
                     turnIndicator.textContent = "BOT'S TURN";
@@ -986,7 +1042,7 @@ const DeadNumberGame = {
                 }
             } else {
                 if (isMyTurn) {
-                    turnIndicator.textContent = "YOUR TURN";
+                    turnIndicator.textContent = `${this.playerName.toUpperCase()}'S TURN`;
                     turnIndicator.style.color = "var(--color-blue)";
                 } else {
                     const activeName = this.opponentName;
@@ -1744,7 +1800,7 @@ const DeadNumberGame = {
 
         if (turnIndicator) {
             if (isMyTurn) {
-                turnIndicator.textContent = "YOUR TURN";
+                turnIndicator.textContent = `${this.playerName.toUpperCase()}'S TURN`;
                 turnIndicator.style.color = "var(--color-blue)";
             } else {
                 turnIndicator.textContent = `${this.opponentName.toUpperCase()}'S TURN`;

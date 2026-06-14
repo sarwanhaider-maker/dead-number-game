@@ -30,6 +30,12 @@
                     </div>
                 </div>
 
+                <!-- Player Name Input (Applies to all modes) -->
+                <div class="setup-group" id="setup-group-name">
+                    <label class="setup-label" for="player-name-input">Your Name</label>
+                    <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="12" style="width: 100%; padding: 0.8rem; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff; font-family: var(--font-body); font-size: 1rem; outline: none; margin-bottom: 0.2rem;" value="Player">
+                </div>
+
                 <div class="setup-group">
                     <label class="setup-label">Select Dead Number (20 - 100)</label>
                     <div class="dead-num-display"><span id="dead-num-display-val">25</span></div>
@@ -97,10 +103,6 @@
                     <!-- Join View -->
                     <div id="pvp-join-view" style="display: none;">
                         <div class="setup-group">
-                            <label class="setup-label" for="pvp-player-name">Your Name</label>
-                            <input type="text" id="pvp-player-name" placeholder="Enter name" maxlength="12" style="width:100%; padding:0.8rem; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#fff; font-family:var(--font-body); font-size:1rem; outline:none; margin-bottom:1rem;">
-                        </div>
-                        <div class="setup-group">
                             <label class="setup-label" for="pvp-room-input">4-Digit Room Code</label>
                             <input type="text" id="pvp-room-input" placeholder="e.g. 1234" maxlength="4" style="width:100%; padding:0.8rem; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#fff; font-family:var(--font-cyber); font-size:1.2rem; text-align:center; letter-spacing:4px; outline:none;">
                         </div>
@@ -109,11 +111,7 @@
 
                     <!-- Quick Match View -->
                     <div id="pvp-quick-view" style="display: none;">
-                        <div class="setup-group">
-                            <label class="setup-label" for="pvp-quick-name">Your Name</label>
-                            <input type="text" id="pvp-quick-name" placeholder="Enter name" maxlength="12" style="width:100%; padding:0.8rem; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#fff; font-family:var(--font-body); font-size:1rem; outline:none; margin-bottom:1rem;">
-                        </div>
-                        <button class="btn-primary" id="btn-quick-match" style="background: linear-gradient(90deg, #1ba0aa, #147a82); box-shadow: 0 4px 15px rgba(27,160,170,0.3);">Find Opponent</button>
+                        <button class="btn-primary" id="btn-quick-match" style="background: linear-gradient(90deg, #1ba0aa, #147a82); box-shadow: 0 4px 15px rgba(27,160,170,0.3); width: 100%;">Find Opponent</button>
                     </div>
                 </div>
                 
