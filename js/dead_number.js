@@ -61,7 +61,19 @@ const DeadNumberGame = {
         this.updateSliderRangeForDifficulty();
         this.showScreen('setup-screen');
         this.startDailyRewardTimer();
-        this.speak("Welcome to Dead Number. Set your parameters to begin.");
+
+        // Smoothly hide splash screen after 2.5 seconds
+        setTimeout(() => {
+            const splash = document.getElementById('splash-screen');
+            if (splash) {
+                splash.style.opacity = '0';
+                splash.style.visibility = 'hidden';
+                setTimeout(() => {
+                    splash.style.display = 'none';
+                }, 500);
+            }
+            this.speak("Welcome to Dead Number. Set your parameters to begin.");
+        }, 2500);
     },
 
     fetchRemoteConfig() {
