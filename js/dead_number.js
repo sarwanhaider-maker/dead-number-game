@@ -18,6 +18,7 @@ const DeadNumberGame = {
     // TTS Voice
     voiceEnabled: true,
     crazySDK: null,
+    isAudioMuted: false,
 
     // Monetization/Ads Configuration (Plug-and-play SDK bridge)
     monetization: {
@@ -1903,6 +1904,7 @@ const DeadNumberGame = {
     },
 
     playClickSound() {
+        if (this.isAudioMuted) return;
         try {
             const ctx = this.getAudioCtx();
             const osc = ctx.createOscillator();
@@ -1923,6 +1925,7 @@ const DeadNumberGame = {
     },
 
     playChoiceSound() {
+        if (this.isAudioMuted) return;
         try {
             const ctx = this.getAudioCtx();
             const osc = ctx.createOscillator();
@@ -1944,6 +1947,7 @@ const DeadNumberGame = {
     },
 
     playVictorySound() {
+        if (this.isAudioMuted) return;
         try {
             const ctx = this.getAudioCtx();
             const osc1 = ctx.createOscillator();
@@ -1968,6 +1972,7 @@ const DeadNumberGame = {
     },
 
     playErrorSound() {
+        if (this.isAudioMuted) return;
         try {
             const ctx = this.getAudioCtx();
             const osc = ctx.createOscillator();
@@ -2138,8 +2143,50 @@ const DeadNumberGame = {
         if (window.CrazyGames && window.CrazyGames.SDK) {
             console.log("[Ads] CrazyGames SDK detected, initializing...");
             this.crazySDK = window.CrazyGames.SDK;
+            
+            try {
+                this.crazySDK.addEventListener('mute', () => {
+                    console.log("[Audio] Mute event received from CrazyGames");
+                    this.muteGameAudio();
+                });
+                this.crazySDK.addEventListener('unmute', () => {
+                    console.log("[Audio] Unmute event received from CrazyGames");
+                    this.unmuteGameAudio();
+                });
+            } catch (e) {
+                console.warn("[Ads] Failed to register CrazyGames audio listeners:", e);
+            }
         } else {
             console.log("[Ads] CrazyGames SDK not detected on window (yet).");
+        }
+    },
+
+    muteGameAudio() {
+        this.isAudioMuted = true;
+        this.savedVoiceState = this.voiceEnabled;
+        this.voiceEnabled = false;
+        try {
+            const ctx = this.getAudioCtx();
+            if (ctx && typeof ctx.suspend === 'function') {
+                ctx.suspend();
+            }
+        } catch (e) {
+            console.warn(e);
+        }
+    },
+
+    unmuteGameAudio() {
+        this.isAudioMuted = false;
+        if (this.savedVoiceState !== undefined) {
+            this.voiceEnabled = this.savedVoiceState;
+        }
+        try {
+            const ctx = this.getAudioCtx();
+            if (ctx && typeof ctx.resume === 'function') {
+                ctx.resume();
+            }
+        } catch (e) {
+            console.warn(e);
         }
     },
 
