@@ -651,13 +651,7 @@ const DeadNumberGame = {
         const btnLifelineTime = document.getElementById('btn-lifeline-time');
         if (btnLifelineTime) btnLifelineTime.style.display = 'none';
         
-        if (this.gameMode === 'pvp') {
-            if (this.isHost) {
-                // Host decides based on setup selection ('player' goes first vs 'bot' (opponent) goes first)
-                this.currentTurn = (this.firstTurn === 'player') ? 'player' : 'opponent';
-            }
-            // Challenger retains the turn state received from Host's network packet (message.currentTurn)
-        } else {
+        if (this.gameMode !== 'pvp') {
             this.currentTurn = this.firstTurn;
         }
 
