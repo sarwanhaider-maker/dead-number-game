@@ -1150,7 +1150,17 @@ const DeadNumberGame = {
                 container.className = 'glass-panel';
             }
             this.loadStats(); // Load stats on return to setup
-            this.showSetupStep(1); // Reset wizard back to Step 1
+            
+            // Check if we are in an active PvP room lobby/draft phase
+            if (this.gameMode === 'pvp' && this.connected) {
+                if (this.isHost) {
+                    this.showSetupStep(3); // Host goes straight to Stakes/Dead Number selection
+                } else {
+                    this.showSetupStep(2); // Guest goes to Step 2 (waiting for Host)
+                }
+            } else {
+                this.showSetupStep(1); // Local bot games reset back to Step 1
+            }
         }
     },
 
