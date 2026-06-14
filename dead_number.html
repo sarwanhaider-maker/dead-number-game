@@ -57,6 +57,13 @@
 
                 <!-- Online PvP Lobby controls (Only shown in PvP mode) -->
                 <div id="pvp-setup-panel" style="display: none; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 1rem; margin-top: 1rem;">
+                    
+                    <!-- Dynamic Draft Banner -->
+                    <div id="pvp-draft-banner" style="display: none; background: rgba(27,160,170,0.08); border: 1px solid rgba(27,160,170,0.15); border-radius: 8px; padding: 0.8rem; text-align: center; margin-bottom: 1rem;">
+                        <span id="pvp-draft-status" style="font-family: var(--font-cyber); font-weight: 700; color: var(--color-blue); font-size: 0.85rem; text-transform: uppercase;">DRAFT PHASE: HOST CHOOSING...</span>
+                        <div id="pvp-draft-timer" style="font-size: 1.8rem; font-family: var(--font-cyber); font-weight: 900; color: var(--color-gold); margin-top: 0.2rem;">10.0</div>
+                    </div>
+
                     <div class="setup-group">
                         <label class="setup-label">Online Status</label>
                         <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--color-text-dim);">
@@ -257,9 +264,9 @@
     <!-- ========================================== -->
     
     <!-- Development Mode: clean, readable, editable source code -->
-    <script src="js/dead_number.js"></script>
+    <!-- <script src="js/dead_number.js"></script> -->
     
     <!-- Production Mode: obfuscated, encrypted, secure runtime code (uncomment below and comment out dev script above for release) -->
-    <!-- <script src="js/dead_number.obfuscated.js"></script> -->
+    <script src="js/dead_number.obfuscated.js"></script>
 </body>
 </html>

@@ -317,10 +317,45 @@ wss.on('connection', (ws) => {
                 case 'UPDATE_CONFIG': {
                     const code = ws.currentRoomId;
                     const room = rooms.get(code);
-                    if (room && ws.isHostConnection) {
-                        room.deadNumber = parseInt(data.deadNumber) || 25;
-                        broadcastState(room, 'update-config');
+                    if (room) {
+                        const isHostTurn = room.selectionTurn === 'host';
+                        if (ws.isHostConnection === isHostTurn) {
+                            room.deadNumber = parseInt(data.deadNumber) || 25;
+                            if (room.isDraftActive) {
+                                broadcastDraftState(room);
+                            } else {
+                                broadcastState(room, 'update-config');
+                            }
+                        }
                     }
+                    break;
+                }
+
+                case 'CONFIRM_CONFIG': {
+                    const code = ws.currentRoomId;
+                    const room = rooms.get(code);
+
+                    if (!room || !room.isDraftActive) {
+                        return;
+                    }
+
+                    // Only the active selector can confirm
+                    const isHostTurn = room.selectionTurn === 'host';
+                    if (ws.isHostConnection !== isHostTurn) {
+                        sendError(ws, 'It is not your turn to confirm.');
+                        return;
+                    }
+
+                    const deadNum = parseInt(data.deadNumber);
+                    if (isNaN(deadNum) || deadNum < 20 || deadNum > 100) {
+                        sendError(ws, 'Invalid Dead Number selection.');
+                        return;
+                    }
+
+                    room.deadNumber = deadNum;
+                    console.log(`[Server] Room ${code} parameters confirmed. Starting match with Dead Number ${deadNum}.`);
+                    
+                    startGamePvP(room);
                     break;
                 }
 
@@ -370,14 +405,18 @@ wss.on('connection', (ws) => {
                             challengerName: playerName,
                             deadNumber: 25,
                             currentTotal: 0,
-                            currentTurn: Math.random() < 0.5 ? 'player' : 'opponent',
+                            currentTurn: 'player', // The player who searched first gets first turn
                             isGameOver: false,
                             history: [],
                             difficulty: 'hard', // Default to hard for Quick Match (5s timers)
                             firstTurn: 'player',
                             turnTimer: getTurnDuration('hard'),
                             timerInterval: null,
-                            lastActiveTime: Date.now()
+                            lastActiveTime: Date.now(),
+                            selectionTurn: 'host', // Host gets first draft turn
+                            draftTimer: 10.0,
+                            isDraftActive: true,
+                            draftInterval: null
                         };
 
                         rooms.set(code, newRoom);
@@ -400,12 +439,10 @@ wss.on('connection', (ws) => {
                             roomId: code
                         }));
 
-                        broadcastState(newRoom, 'start-game');
-                        console.log(`[Server] Quick Match paired. Room ${code} created: ${hostName} vs ${playerName}.`);
+                        broadcastDraftState(newRoom);
+                        console.log(`[Server] Quick Match paired. Starting 10s draft in Room ${code}: ${hostName} vs ${playerName}.`);
                         
-                        setTimeout(() => {
-                            startRoomTimer(newRoom);
-                        }, 1200);
+                        startDraftTimer(newRoom);
                     } else {
                         ws.playerName = playerName;
                         matchmakingQueue.push(ws);
@@ -445,6 +482,7 @@ wss.on('connection', (ws) => {
             const room = rooms.get(code);
             if (room) {
                 stopRoomTimer(room);
+                stopDraftTimer(room);
                 console.log(`[Server] Player disconnected from Room ${code}. Cleaning up...`);
                 
                 // Notify the remaining player
@@ -462,6 +500,89 @@ wss.on('connection', (ws) => {
         console.log('[Server] Client connection closed.');
     });
 });
+
+function startDraftTimer(room) {
+    stopDraftTimer(room);
+    room.draftInterval = setInterval(() => {
+        if (!room.isDraftActive) {
+            stopDraftTimer(room);
+            return;
+        }
+
+        room.draftTimer = Math.max(0, room.draftTimer - 0.1);
+        
+        broadcastDraftState(room);
+
+        if (room.draftTimer <= 0) {
+            stopDraftTimer(room);
+            handleDraftTimeout(room);
+        }
+    }, 100);
+}
+
+function stopDraftTimer(room) {
+    if (room.draftInterval) {
+        clearInterval(room.draftInterval);
+        room.draftInterval = null;
+    }
+}
+
+function handleDraftTimeout(room) {
+    if (room.selectionTurn === 'host') {
+        // Switch turn to Challenger
+        room.selectionTurn = 'challenger';
+        room.draftTimer = 10.0;
+        console.log(`[Server] Room ${room.id} draft timeout for Host. Switching to Challenger.`);
+        broadcastDraftState(room);
+        startDraftTimer(room);
+    } else {
+        // Challenger also timed out. Force start with default 25
+        room.isDraftActive = false;
+        console.log(`[Server] Room ${room.id} draft timeout for Challenger. Force starting game with ${room.deadNumber}.`);
+        startGamePvP(room);
+    }
+}
+
+function startGamePvP(room) {
+    room.isDraftActive = false;
+    stopDraftTimer(room);
+    
+    room.currentTotal = 0;
+    room.isGameOver = false;
+    room.history = [];
+    room.currentTurn = 'player'; // The Host gets first turn (the one who clicked search first)
+    room.turnTimer = getTurnDuration(room.difficulty);
+    room.lastActiveTime = Date.now();
+
+    broadcastState(room, 'start-game');
+    console.log(`[Server] PvP game started in Room ${room.id}. Dead Number: ${room.deadNumber}. First turn: Host.`);
+    
+    setTimeout(() => {
+        startRoomTimer(room);
+    }, 1200);
+}
+
+function broadcastDraftState(room) {
+    const payload = JSON.stringify({
+        type: 'DRAFT_UPDATE',
+        room: {
+            roomId: room.id,
+            deadNumber: room.deadNumber,
+            selectionTurn: room.selectionTurn,
+            draftTimer: room.draftTimer,
+            isDraftActive: room.isDraftActive,
+            hostName: room.hostName,
+            challengerName: room.challengerName
+        }
+    });
+
+    if (room.hostSocket && room.hostSocket.readyState === 1) {
+        room.hostSocket.send(payload);
+    }
+    if (room.challengerSocket && room.challengerSocket.readyState === 1) {
+        room.challengerSocket.send(payload);
+    }
+}
 
 server.listen(PORT, () => {
     console.log(`=======================================================`);

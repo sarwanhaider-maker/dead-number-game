@@ -30,6 +30,8 @@ const DeadNumberGame = {
     connected: false,
     opponentConnected: false,
     history: [],
+    isDraftActive: false,
+    selectionTurn: 'host',
 
     // Remote Configuration for Dynamic Server URL
     remoteConfigUrl: 'https://raw.githubusercontent.com/sarwanhaider-maker/dead-number-game/main/config.json',
@@ -231,11 +233,11 @@ const DeadNumberGame = {
         const display = document.getElementById('dead-num-display-val');
         if (slider && display) {
             slider.oninput = () => {
-                if (this.gameMode === 'pvp' && !this.isHost) return; // Challenger cannot change Dead Number
+                if (!this.isDeadNumberChangeable()) return;
                 this.deadNumber = parseInt(slider.value);
                 display.textContent = this.deadNumber;
                 
-                if (this.gameMode === 'pvp' && this.isHost) {
+                if (this.gameMode === 'pvp') {
                     this.sendAction('UPDATE_CONFIG', { deadNumber: this.deadNumber });
                 }
             };
@@ -395,8 +397,16 @@ const DeadNumberGame = {
                 this.playClickSound();
                 if (this.gameMode === 'bot') {
                     this.startGame();
-                } else if (this.gameMode === 'pvp' && this.isHost) {
-                    this.startPvPGame();
+                } else if (this.gameMode === 'pvp') {
+                    if (this.isDraftActive) {
+                        const isMyTurn = (this.isHost && this.selectionTurn === 'host') || (!this.isHost && this.selectionTurn === 'challenger');
+                        if (isMyTurn) {
+                            const val = slider ? parseInt(slider.value) : this.deadNumber;
+                            this.sendAction('CONFIRM_CONFIG', { deadNumber: val });
+                        }
+                    } else if (this.isHost) {
+                        this.startPvPGame();
+                    }
                 }
             };
         }
@@ -596,6 +606,73 @@ const DeadNumberGame = {
 
             this.isHost = false;
             this.disconnectNetwork();
+        }
+    },
+
+    isDeadNumberChangeable() {
+        if (this.gameMode !== 'pvp') return true;
+        if (this.isDraftActive) {
+            return (this.isHost && this.selectionTurn === 'host') || (!this.isHost && this.selectionTurn === 'challenger');
+        }
+        return this.isHost;
+    },
+
+    updateDraftUI(room) {
+        const draftBanner = document.getElementById('pvp-draft-banner');
+        const draftStatus = document.getElementById('pvp-draft-status');
+        const draftTimer = document.getElementById('pvp-draft-timer');
+        const startBtn = document.getElementById('btn-start-game');
+        const slider = document.getElementById('dead-num-slider');
+        const turnGroup = document.getElementById('setup-group-turn');
+        const hostView = document.getElementById('pvp-host-view');
+        const joinView = document.getElementById('pvp-join-view');
+        const quickView = document.getElementById('pvp-quick-view');
+
+        if (!draftBanner) return;
+
+        if (this.isDraftActive) {
+            draftBanner.style.display = 'block';
+            if (draftTimer) {
+                draftTimer.textContent = room.draftTimer.toFixed(1);
+            }
+
+            const isMyTurn = (this.isHost && this.selectionTurn === 'host') || (!this.isHost && this.selectionTurn === 'challenger');
+
+            if (draftStatus) {
+                if (isMyTurn) {
+                    draftStatus.textContent = "YOUR TURN TO SELECT DEAD NUMBER (20-100)";
+                    draftStatus.style.color = "var(--color-gold)";
+                } else {
+                    const selectorName = this.selectionTurn === 'host' ? (room.hostName || 'Host') : (room.challengerName || 'Opponent');
+                    draftStatus.textContent = `WAITING FOR ${selectorName.toUpperCase()} TO SELECT...`;
+                    draftStatus.style.color = "var(--color-blue)";
+                }
+            }
+
+            // Lock / Unlock slider and start/confirm button
+            if (slider) {
+                slider.disabled = !isMyTurn;
+            }
+
+            if (startBtn) {
+                startBtn.style.display = 'block';
+                startBtn.disabled = !isMyTurn;
+                if (isMyTurn) {
+                    startBtn.textContent = "Confirm Dead Number";
+                } else {
+                    const selectorName = this.selectionTurn === 'host' ? (room.hostName || 'Host') : (room.challengerName || 'Opponent');
+                    startBtn.textContent = `${selectorName} Selecting...`;
+                }
+            }
+
+            // Hide other sub-panels in draft mode
+            if (turnGroup) turnGroup.style.display = 'none';
+            if (hostView) hostView.style.display = 'none';
+            if (joinView) joinView.style.display = 'none';
+            if (quickView) quickView.style.display = 'none';
+        } else {
+            draftBanner.style.display = 'none';
+            this.updatePvPRoleUI();
         }
     },
 
@@ -1206,6 +1283,10 @@ const DeadNumberGame = {
         this.connected = false;
         this.opponentConnected = false;
         this.roomId = null;
+        this.isDraftActive = false;
+        this.selectionTurn = 'host';
+        const draftBanner = document.getElementById('pvp-draft-banner');
+        if (draftBanner) draftBanner.style.display = 'none';
         
         const dot = document.getElementById('net-status-dot');
         const txt = document.getElementById('net-status-text');
@@ -1288,6 +1369,32 @@ const DeadNumberGame = {
                     this.isHost = message.isHost;
                     this.roomId = message.roomId;
                     console.log("[Network] Assigned PvP Role. Is Host: " + this.isHost + ", Room: " + this.roomId);
+                    break;
+                }
+
+                case 'DRAFT_UPDATE': {
+                    const room = message.room;
+                    this.isDraftActive = room.isDraftActive;
+                    this.selectionTurn = room.selectionTurn;
+                    this.deadNumber = room.deadNumber;
+
+                    const display = document.getElementById('dead-num-display-val');
+                    const slider = document.getElementById('dead-num-slider');
+                    if (display) display.textContent = this.deadNumber;
+                    if (slider) slider.value = this.deadNumber;
+
+                    if (this.isHost) {
+                        this.opponentName = room.challengerName;
+                    } else {
+                        this.opponentName = room.hostName;
+                    }
+                    this.opponentConnected = true;
+
+                    if (this.isDraftActive) {
+                        this.showScreen('setup-screen');
+                    }
+
+                    this.updateDraftUI(room);
                     break;
                 }
 
