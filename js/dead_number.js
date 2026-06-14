@@ -2059,7 +2059,10 @@ const DeadNumberGame = {
             }
         }
         
-        const shareUrl = window.location.href;
+        let shareUrl = window.location.href;
+        if (!shareUrl.startsWith('http') || shareUrl.includes('localhost') || shareUrl.includes('127.0.0.1')) {
+            shareUrl = 'https://sarwanhaider-maker.github.io/dead-number-game/dead_number.html';
+        }
         
         if (platform === 'facebook') {
             const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(text)}`;
