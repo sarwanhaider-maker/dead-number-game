@@ -594,6 +594,59 @@ const DeadNumberGame = {
                 this.triggerGameOver('bot');
             };
         }
+
+        // Social sharing buttons
+        const shareFacebookBtn = document.getElementById('share-facebook');
+        if (shareFacebookBtn) {
+            shareFacebookBtn.onclick = () => {
+                this.playClickSound();
+                this.shareScore('facebook');
+            };
+        }
+        const shareWhatsappBtn = document.getElementById('share-whatsapp');
+        if (shareWhatsappBtn) {
+            shareWhatsappBtn.onclick = () => {
+                this.playClickSound();
+                this.shareScore('whatsapp');
+            };
+        }
+        const shareCopyBtn = document.getElementById('share-copy');
+        if (shareCopyBtn) {
+            shareCopyBtn.onclick = () => {
+                this.playClickSound();
+                this.shareScore('copy');
+            };
+        }
+        const shareNativeBtn = document.getElementById('share-native');
+        if (shareNativeBtn) {
+            shareNativeBtn.onclick = () => {
+                this.playClickSound();
+                this.shareScore('native');
+            };
+        }
+        const shareTwitterBtn = document.getElementById('share-twitter');
+        if (shareTwitterBtn) {
+            shareTwitterBtn.onclick = () => {
+                this.playClickSound();
+                this.shareScore('twitter');
+            };
+        }
+        const shareTelegramBtn = document.getElementById('share-telegram');
+        if (shareTelegramBtn) {
+            shareTelegramBtn.onclick = () => {
+                this.playClickSound();
+                this.shareScore('telegram');
+            };
+        }
+        const btnExitLobby = document.getElementById('btn-exit-lobby');
+        if (btnExitLobby) {
+            btnExitLobby.onclick = () => {
+                this.playClickSound();
+                this.disconnectNetwork();
+                this.showScreen('setup-screen');
+                this.speak("Returned to lobby.");
+            };
+        }
     },
 
     updatePvPRoleUI() {
@@ -1983,6 +2036,66 @@ const DeadNumberGame = {
             overlay.style.display = 'flex';
         }
         this.speak("You hit the dead number. Watch an ad to revive?");
+    },
+
+    shareScore(platform) {
+        let text = "";
+        const seriesInfo = (this.gameMode === 'pvp') ? ` (Series Score: ${this.myWins} - ${this.opponentWins})` : "";
+        const difficultyInfo = (this.gameMode === 'bot') ? ` on ${this.difficulty.toUpperCase()} difficulty` : "";
+        
+        const playerWon = (this.isGameOver && document.getElementById('verdict-title').textContent === "VICTORY ACHIEVED");
+        
+        if (this.gameMode === 'bot') {
+            if (playerWon) {
+                text = `🎮 I defeated the Bot in Dead Number${difficultyInfo}! I avoided the Dead Number (${this.deadNumber}). Can you beat it? 💥`;
+            } else {
+                text = `🎮 I played Dead Number${difficultyInfo} and hit the Dead Number (${this.deadNumber}). Try to survive where I failed! 💀`;
+            }
+        } else {
+            if (playerWon) {
+                text = `🎮 I survived the online duel in Dead Number! Defeated my opponent ${this.opponentName}${seriesInfo}. Can you match my tactical skills? 🏆`;
+            } else {
+                text = `🎮 Just completed an intense online duel in Dead Number against ${this.opponentName}${seriesInfo}. The tension was real! 🔥`;
+            }
+        }
+        
+        const shareUrl = window.location.href;
+        
+        if (platform === 'facebook') {
+            const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(text)}`;
+            window.open(url, '_blank');
+        } else if (platform === 'twitter') {
+            const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text + " " + shareUrl)}`;
+            window.open(url, '_blank');
+        } else if (platform === 'telegram') {
+            const url = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
+            window.open(url, '_blank');
+        } else if (platform === 'whatsapp') {
+            const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text + " " + shareUrl)}`;
+            window.open(url, '_blank');
+        } else if (platform === 'copy') {
+            navigator.clipboard.writeText(text + " " + shareUrl).then(() => {
+                const toast = document.getElementById('share-toast');
+                if (toast) {
+                    toast.style.display = 'block';
+                    setTimeout(() => { toast.style.display = 'none'; }, 3000);
+                }
+            }).catch(err => {
+                console.error("Failed to copy text: ", err);
+            });
+        } else if (platform === 'native') {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Dead Number: The Nim Duel',
+                    text: text,
+                    url: shareUrl
+                }).catch(err => {
+                    console.log("Error sharing: ", err);
+                });
+            } else {
+                this.shareScore('copy');
+            }
+        }
     }
 };
 

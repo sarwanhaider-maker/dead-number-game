@@ -245,7 +245,7 @@ wss.on('connection', (ws) => {
                     const code = ws.currentRoomId;
                     const room = rooms.get(code);
 
-                    if (!room || !ws.isHostConnection) {
+                    if (!room || ws !== room.hostSocket) {
                         sendError(ws, 'Only the host can start the game.');
                         return;
                     }
@@ -283,7 +283,8 @@ wss.on('connection', (ws) => {
 
                     // Authoritative validation of turn
                     const isHostTurn = room.currentTurn === 'player';
-                    if (ws.isHostConnection !== isHostTurn) {
+                    const isHostConnection = (ws === room.hostSocket);
+                    if (isHostConnection !== isHostTurn) {
                         sendError(ws, 'It is not your turn.');
                         return;
                     }
@@ -303,7 +304,7 @@ wss.on('connection', (ws) => {
                     room.currentTotal = selectedValue;
                     room.lastActiveTime = Date.now();
 
-                    const activePlayerName = ws.isHostConnection ? room.hostName : room.challengerName;
+                    const activePlayerName = (ws === room.hostSocket) ? room.hostName : room.challengerName;
                     const logText = `${activePlayerName} selected: ${selectedValue} (+${addition})`;
                     room.history.push(logText);
 
@@ -338,7 +339,8 @@ wss.on('connection', (ws) => {
                     const room = rooms.get(code);
                     if (room) {
                         const isHostTurn = room.selectionTurn === 'host';
-                        if (ws.isHostConnection === isHostTurn) {
+                        const isHostConnection = (ws === room.hostSocket);
+                        if (isHostConnection === isHostTurn) {
                             room.deadNumber = parseInt(data.deadNumber) || 25;
                             if (room.isDraftActive) {
                                 broadcastDraftState(room);
@@ -360,7 +362,8 @@ wss.on('connection', (ws) => {
 
                     // Only the active selector can confirm
                     const isHostTurn = room.selectionTurn === 'host';
-                    if (ws.isHostConnection !== isHostTurn) {
+                    const isHostConnection = (ws === room.hostSocket);
+                    if (isHostConnection !== isHostTurn) {
                         sendError(ws, 'It is not your turn to confirm.');
                         return;
                     }
@@ -490,7 +493,8 @@ wss.on('connection', (ws) => {
                         return;
                     }
 
-                    const opponent = ws.isHostConnection ? room.challengerSocket : room.hostSocket;
+                    const isHost = (ws === room.hostSocket);
+                    const opponent = isHost ? room.challengerSocket : room.hostSocket;
                     if (!opponent || opponent.readyState !== 1) {
                         sendError(ws, 'Opponent is no longer connected.');
                         return;
@@ -498,7 +502,7 @@ wss.on('connection', (ws) => {
 
                     room.playAgainRequester = ws;
                     opponent.send(JSON.stringify({ type: 'PLAY_AGAIN_OFFERED' }));
-                    console.log(`[Server] Rematch requested in Room ${code} by ${ws.isHostConnection ? 'Host' : 'Challenger'}.`);
+                    console.log(`[Server] Rematch requested in Room ${code} by ${isHost ? 'Host' : 'Challenger'}.`);
                     break;
                 }
 
@@ -583,7 +587,8 @@ wss.on('connection', (ws) => {
                     const code = ws.currentRoomId;
                     const room = rooms.get(code);
                     if (room && room.playAgainRequester === ws) {
-                        const opponent = ws.isHostConnection ? room.challengerSocket : room.hostSocket;
+                        const isHost = (ws === room.hostSocket);
+                        const opponent = isHost ? room.challengerSocket : room.hostSocket;
                         if (opponent && opponent.readyState === 1) {
                             opponent.send(JSON.stringify({ type: 'PLAY_AGAIN_CANCELLED' }));
                         }
@@ -619,7 +624,8 @@ wss.on('connection', (ws) => {
                 console.log(`[Server] Player disconnected from Room ${code}. Cleaning up...`);
                 
                 // Notify the remaining player
-                const remainderSocket = ws.isHostConnection ? room.challengerSocket : room.hostSocket;
+                const isHost = (ws === room.hostSocket);
+                const remainderSocket = isHost ? room.challengerSocket : room.hostSocket;
                 if (remainderSocket && remainderSocket.readyState === 1) {
                     remainderSocket.send(JSON.stringify({
                         type: 'OPPONENT_DISCONNECTED',
