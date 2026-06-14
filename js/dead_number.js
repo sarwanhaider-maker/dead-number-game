@@ -7,8 +7,9 @@ const DeadNumberGame = {
     deadNumber: 25,
     currentTotal: 0,
     currentTurn: 'player', // 'player' or 'bot' (or 'opponent' in PvP)
-    difficulty: 'hard', // 'easy', 'medium', 'hard'
+    difficulty: 'easy', // 'easy', 'medium', 'hard'
     firstTurn: 'player', // 'player' or 'bot' (or 'opponent' in PvP)
+    strategyHelper: true, // Default to ON for vs Bot mode
     
     // Timer properties
     turnTimer: 5.0,
@@ -261,6 +262,48 @@ const DeadNumberGame = {
     },
 
     setupEventListeners() {
+        // Setup Step 1 -> Step 2 Navigation (Next button)
+        const btnStep1Next = document.getElementById('btn-step-1-next');
+        if (btnStep1Next) {
+            btnStep1Next.onclick = () => {
+                this.playClickSound();
+                if (!this.playerName || this.playerName.trim() === '') {
+                    alert('Please enter your name to continue!');
+                    const nameField = document.getElementById('player-name-input');
+                    if (nameField) nameField.focus();
+                    return;
+                }
+                this.showSetupStep(2);
+            };
+        }
+
+        // Setup Step 2 -> Step 1 Navigation (Back button)
+        const btnStep2Back = document.getElementById('btn-step-2-back');
+        if (btnStep2Back) {
+            btnStep2Back.onclick = () => {
+                this.playClickSound();
+                this.showSetupStep(1);
+            };
+        }
+
+        // Setup Step 2 -> Step 3 Navigation (Next button)
+        const btnStep2Next = document.getElementById('btn-step-2-next');
+        if (btnStep2Next) {
+            btnStep2Next.onclick = () => {
+                this.playClickSound();
+                this.showSetupStep(3);
+            };
+        }
+
+        // Setup Step 3 -> Step 2 Navigation (Back button)
+        const btnStep3Back = document.getElementById('btn-step-3-back');
+        if (btnStep3Back) {
+            btnStep3Back.onclick = () => {
+                this.playClickSound();
+                this.showSetupStep(2);
+            };
+        }
+
         // Tutorial click handlers
         const btnPlayTutorial = document.getElementById('btn-play-tutorial');
         if (btnPlayTutorial) {
@@ -351,10 +394,22 @@ const DeadNumberGame = {
             };
         });
 
+        // Toggles for Strategy Assist
+        const helperButtons = document.querySelectorAll('.btn-helper');
+        helperButtons.forEach(btn => {
+            btn.onclick = () => {
+                helperButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.strategyHelper = (btn.dataset.helper === 'on');
+                this.playClickSound();
+            };
+        });
+
         // Toggles for Game Mode (vs Bot vs Online PvP)
         const btnModeBot = document.getElementById('btn-mode-bot');
         const btnModePvP = document.getElementById('btn-mode-pvp');
         const diffGroup = document.getElementById('setup-group-diff');
+        const helperGroup = document.getElementById('setup-group-helper');
         const pvpPanel = document.getElementById('pvp-setup-panel');
         const startBtn = document.getElementById('btn-start-game');
 
@@ -366,6 +421,7 @@ const DeadNumberGame = {
                 this.gameMode = 'bot';
                 
                 if (diffGroup) diffGroup.style.display = 'block';
+                if (helperGroup) helperGroup.style.display = 'block';
                 if (pvpPanel) pvpPanel.style.display = 'none';
                 if (startBtn) {
                     startBtn.style.display = 'block';
@@ -378,6 +434,7 @@ const DeadNumberGame = {
                 
                 this.disconnectNetwork();
                 this.updateSliderRangeForDifficulty();
+                this.updateStep2Buttons();
             };
 
             btnModePvP.onclick = () => {
@@ -395,10 +452,12 @@ const DeadNumberGame = {
                 this.playerName = nameVal;
                 
                 if (diffGroup) diffGroup.style.display = 'none';
+                if (helperGroup) helperGroup.style.display = 'none';
                 if (pvpPanel) pvpPanel.style.display = 'block';
                 
                 this.updatePvPRoleUI();
                 this.updateSliderRangeForDifficulty();
+                this.updateStep2Buttons();
             };
         }
 
@@ -423,6 +482,7 @@ const DeadNumberGame = {
                 this.pvpRole = 'host';
                 this.playerName = nameVal;
                 this.updatePvPRoleUI();
+                this.updateStep2Buttons();
             };
 
             btnRoleJoin.onclick = () => {
@@ -440,6 +500,7 @@ const DeadNumberGame = {
                 this.pvpRole = 'join';
                 this.playerName = nameVal;
                 this.updatePvPRoleUI();
+                this.updateStep2Buttons();
             };
 
             btnRoleQuick.onclick = () => {
@@ -457,6 +518,7 @@ const DeadNumberGame = {
                 this.pvpRole = 'quick';
                 this.playerName = nameVal;
                 this.updatePvPRoleUI();
+                this.updateStep2Buttons();
             };
         }
 
@@ -1088,6 +1150,51 @@ const DeadNumberGame = {
                 container.className = 'glass-panel';
             }
             this.loadStats(); // Load stats on return to setup
+            this.showSetupStep(1); // Reset wizard back to Step 1
+        }
+    },
+
+    showSetupStep(step) {
+        for (let i = 1; i <= 3; i++) {
+            const el = document.getElementById(`setup-step-${i}`);
+            if (el) el.style.display = 'none';
+        }
+        
+        const target = document.getElementById(`setup-step-${step}`);
+        if (target) target.style.display = 'block';
+
+        if (step === 2) {
+            this.updateStep2Buttons();
+        }
+
+        if (step === 3) {
+            const summaryEl = document.getElementById('setup-step-3-summary');
+            if (summaryEl) {
+                let recapText = '';
+                if (this.gameMode === 'bot') {
+                    const helperText = this.strategyHelper ? 'ON' : 'OFF';
+                    const turnText = this.firstTurn === 'player' ? 'Player' : 'Bot';
+                    recapText = `<strong>Mode:</strong> vs Bot (${this.difficulty.toUpperCase()})<br>` +
+                                `<strong>Strategy Assist:</strong> ${helperText}<br>` +
+                                `<strong>First Turn:</strong> ${turnText}`;
+                } else {
+                    const roleText = this.pvpRole === 'host' ? 'Host Room' : (this.pvpRole === 'join' ? 'Join Room' : 'Quick Match');
+                    recapText = `<strong>Mode:</strong> Online PvP<br>` +
+                                `<strong>Your Role:</strong> ${roleText}`;
+                }
+                summaryEl.innerHTML = recapText;
+            }
+        }
+    },
+
+    updateStep2Buttons() {
+        const btnStep2Next = document.getElementById('btn-step-2-next');
+        if (btnStep2Next) {
+            if (this.gameMode === 'bot' || (this.gameMode === 'pvp' && this.pvpRole === 'host')) {
+                btnStep2Next.style.display = 'block';
+            } else {
+                btnStep2Next.style.display = 'none';
+            }
         }
     },
 
@@ -1275,9 +1382,22 @@ const DeadNumberGame = {
             if (btn) {
                 const nextVal = this.currentTotal + i;
                 btn.dataset.val = nextVal;
+                
+                // Clear any helper classes first to avoid stale highlights
+                btn.classList.remove('safe-move', 'danger-move');
+
                 if (enable) {
                     // Disable choice if it exceeds the Dead Number
                     btn.disabled = (nextVal > this.deadNumber);
+
+                    // Add visual helper highlights if active, in Bot mode, and the move is valid
+                    if (this.strategyHelper && this.gameMode === 'bot' && !btn.disabled) {
+                        if (nextVal === this.deadNumber) {
+                            btn.classList.add('danger-move');
+                        } else if ((this.deadNumber - 1 - nextVal) % 5 === 0) {
+                            btn.classList.add('safe-move');
+                        }
+                    }
                 } else {
                     btn.disabled = true;
                 }

@@ -402,6 +402,32 @@ body {
     box-shadow: none;
 }
 
+/* Strategy Assist Glowing Choice Overrides */
+.btn-choice.safe-move {
+    background: #2e7d32 !important;
+    border-bottom: 4px solid #1b5e20 !important;
+    box-shadow: 
+        0 4px 8px rgba(46, 125, 50, 0.3),
+        0 0 12px rgba(46, 125, 50, 0.5),
+        inset 0 1.5px 0 rgba(255, 255, 255, 0.3) !important;
+}
+.btn-choice.safe-move:hover:not(:disabled) {
+    background: #388e3c !important;
+    border-color: #2e7d32 !important;
+}
+.btn-choice.danger-move {
+    background: #c62828 !important;
+    border-bottom: 4px solid #b71c1c !important;
+    box-shadow: 
+        0 4px 8px rgba(198, 40, 40, 0.3),
+        0 0 12px rgba(198, 40, 40, 0.5),
+        inset 0 1.5px 0 rgba(255, 255, 255, 0.3) !important;
+}
+.btn-choice.danger-move:hover:not(:disabled) {
+    background: #d32f2f !important;
+    border-color: #c62828 !important;
+}
+
 /* History Log Box */
 .history-panel {
     background: rgba(255, 252, 240, 0.6);
@@ -800,3 +826,60 @@ body {
     color: #ffffff;
     box-shadow: 0 0 15px rgba(0, 136, 204, 0.5);
 }
+
+/* Wizard Setup Steps & Profile Rules Card Styles */
+.rules-card {
+    background: rgba(27, 160, 170, 0.05);
+    border: 1px solid rgba(27, 160, 170, 0.2);
+    border-radius: 12px;
+    padding: 1.2rem;
+    margin: 1.2rem 0;
+    text-align: left;
+}
+.rules-card-title {
+    font-family: var(--font-cyber);
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--color-blue);
+    margin-bottom: 0.6rem;
+    letter-spacing: 0.5px;
+}
+.rules-list {
+    margin: 0;
+    padding-left: 1.2rem;
+    font-size: 0.85rem;
+    color: var(--color-text-dim);
+    line-height: 1.5;
+}
+.rules-list li {
+    margin-bottom: 0.4rem;
+}
+.rules-list li strong {
+    color: #147a82;
+}
+
+.summary-recap-card {
+    background: rgba(255, 252, 240, 0.8);
+    border: 1px solid rgba(20, 122, 130, 0.15);
+    border-radius: 12px;
+    padding: 1.2rem;
+    margin: 1.5rem 0 1rem 0;
+    text-align: left;
+    box-shadow: 0 4px 12px rgba(20, 122, 130, 0.04);
+}
+.recap-title {
+    font-family: var(--font-cyber);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #147a82;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.5rem;
+}
+.recap-body {
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    color: var(--color-text);
+    line-height: 1.6;
+}
+

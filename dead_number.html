@@ -32,153 +32,200 @@
                     <div class="header-subtitle">THE NIM DUEL</div>
                 </header>
                 
-                <!-- Game Mode Selector -->
-                <div class="setup-group">
-                    <label class="setup-label">Game Mode</label>
-                    <div class="toggle-grid">
-                        <button class="btn-toggle btn-mode active" id="btn-mode-bot" data-mode="bot">vs Bot</button>
-                        <button class="btn-toggle btn-mode" id="btn-mode-pvp" data-mode="pvp">Online PvP</button>
+                <!-- STEP 1: PLAYER PROFILE & QUICK RULES -->
+                <div id="setup-step-1" class="setup-step-container">
+                    <!-- Player Name Input (Applies to all modes) -->
+                    <div class="setup-group" id="setup-group-name">
+                        <label class="setup-label" for="player-name-input">Your Name</label>
+                        <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="12" style="width: 100%; padding: 0.8rem; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff; font-family: var(--font-body); font-size: 1rem; outline: none; margin-bottom: 0.2rem;" value="">
+                    </div>
+
+                    <!-- Quick Rules Card -->
+                    <div class="rules-card">
+                        <div class="rules-card-title">📖 HOW TO PLAY</div>
+                        <ul class="rules-list">
+                            <li>Take turns choosing <strong>+1, +2, +3, or +4</strong> to raise the total.</li>
+                            <li>Avoid hitting the <strong>Dead Number</strong> exactly.</li>
+                            <li>The player forced to reach the Dead Number <strong>loses the duel!</strong></li>
+                        </ul>
+                    </div>
+
+                    <button class="btn-primary" id="btn-step-1-next" style="margin-top: 1.5rem;">Continue to Match Setup</button>
+
+                    <!-- Stats Dashboard (Profile Stats) -->
+                    <div id="stats-dashboard" style="margin-top: 2rem; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 1.5rem;">
+                        <label class="setup-label" style="text-align: center; display: block; color: var(--color-blue); margin-bottom: 1rem;">SURVIVAL CORE STATS</label>
+                        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem; margin-bottom: 1rem;">
+                            <div class="stat-card" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 8px; text-align: center;">
+                                <div class="stat-val" id="stat-bot-games" style="font-family: var(--font-cyber); font-size: 1.2rem; color: var(--color-gold);">0 / 0</div>
+                                <div class="stat-lbl" style="font-size: 0.75rem; color: var(--color-text-dim); text-transform: uppercase; margin-top: 0.2rem;">Bot Wins/Played</div>
+                            </div>
+                            <div class="stat-card" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 8px; text-align: center;">
+                                <div class="stat-val" id="stat-pvp-games" style="font-family: var(--font-cyber); font-size: 1.2rem; color: var(--color-gold);">0 / 0</div>
+                                <div class="stat-lbl" style="font-size: 0.75rem; color: var(--color-text-dim); text-transform: uppercase; margin-top: 0.2rem;">PvP Wins/Played</div>
+                            </div>
+                            <div class="stat-card" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 8px; text-align: center;">
+                                <div class="stat-val" id="stat-win-ratio" style="font-family: var(--font-cyber); font-size: 1.2rem; color: var(--color-green);">0%</div>
+                                <div class="stat-lbl" style="font-size: 0.75rem; color: var(--color-text-dim); text-transform: uppercase; margin-top: 0.2rem;">Win Ratio</div>
+                            </div>
+                            <div class="stat-card" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 8px; text-align: center;">
+                                <div class="stat-val" id="stat-streak" style="font-family: var(--font-cyber); font-size: 1.2rem; color: var(--color-gold);">0</div>
+                                <div class="stat-lbl" style="font-size: 0.75rem; color: var(--color-text-dim); text-transform: uppercase; margin-top: 0.2rem;">Active Streak</div>
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-bottom: 1rem;">
+                            <button id="btn-reset-stats" style="background: none; border: none; color: var(--color-crimson); font-family: var(--font-cyber); font-size: 0.75rem; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;">Reset Stats</button>
+                        </div>
+
+                        <!-- Ranked Badge & Daily Bonus -->
+                        <div class="gamify-row" style="display: flex; gap: 0.8rem; margin-top: 1rem; margin-bottom: 1rem;">
+                            <!-- Badge Card -->
+                            <div class="stat-card" style="flex: 1; text-align: center;">
+                                <span class="setup-label" style="font-size: 0.75rem; margin-bottom: 0.4rem;">Rank Badge</span>
+                                <div id="rank-badge-display" class="rank-badge rank-bronze" style="font-family: var(--font-cyber); font-weight: 700; font-size: 1rem; padding: 0.4rem; border-radius: 8px; display: inline-block;">
+                                    🏅 <span id="rank-badge-text">Bronze Evader</span>
+                                </div>
+                            </div>
+                            <!-- Daily Bonus Card -->
+                            <div class="stat-card" style="flex: 1; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                                <span class="setup-label" style="font-size: 0.75rem; margin-bottom: 0.4rem;">Daily Reward</span>
+                                <button class="btn-primary" id="btn-claim-daily" style="font-size: 0.8rem; padding: 0.5rem 1rem; border-radius: 8px; border-bottom-width: 2px;">Claim +100 🪙</button>
+                            </div>
+                        </div>
+
+                        <!-- Global Leaderboard Section -->
+                        <div class="leaderboard-section" style="margin-top: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 1.2rem;">
+                            <label class="setup-label" style="color: var(--color-gold); text-align: center; display: block; margin-bottom: 0.8rem; font-weight: 700; font-size: 0.95rem;">DUEL LEADERBOARD (GLOBAL TOP 5)</label>
+                            <div class="leaderboard-list" id="leaderboard-list">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Player Name Input (Applies to all modes) -->
-                <div class="setup-group" id="setup-group-name">
-                    <label class="setup-label" for="player-name-input">Your Name</label>
-                    <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="12" style="width: 100%; padding: 0.8rem; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff; font-family: var(--font-body); font-size: 1rem; outline: none; margin-bottom: 0.2rem;" value="">
-                </div>
-
-                <div class="setup-group">
-                    <label class="setup-label">Select Dead Number (20 - 100)</label>
-                    <div class="dead-num-display"><span id="dead-num-display-val">25</span></div>
-                    <input type="range" id="dead-num-slider" class="slider-input" min="20" max="100" value="25">
-                </div>
-                
-                <!-- Bot Difficulty Setup (Only shown in vs Bot mode) -->
-                <div class="setup-group" id="setup-group-diff">
-                    <label class="setup-label">Bot Difficulty</label>
-                    <div class="toggle-grid">
-                        <button class="btn-toggle btn-diff" data-diff="easy">Easy</button>
-                        <button class="btn-toggle btn-diff" data-diff="medium">Medium</button>
-                        <button class="btn-toggle btn-diff active" data-diff="hard">Hard</button>
+                <!-- STEP 2: MODE & DIFFICULTY SELECTION -->
+                <div id="setup-step-2" class="setup-step-container" style="display: none;">
+                    <div style="display: flex; justify-content: flex-start; margin-bottom: 1.2rem;">
+                        <button class="btn-toggle" id="btn-step-2-back" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.85rem; border-color: rgba(255,255,255,0.15); color: var(--color-text-dim);">&larr; Back</button>
                     </div>
-                </div>
-                
-                <!-- First Turn Setup (Only shown in vs Bot mode or Host PvP) -->
-                <div class="setup-group" id="setup-group-turn">
-                    <label class="setup-label">First Turn</label>
-                    <div class="toggle-grid">
-                        <button class="btn-toggle btn-turn active-crimson" data-first="player">Player</button>
-                        <button class="btn-toggle btn-turn" data-first="bot">Bot</button>
-                    </div>
-                </div>
 
-                <!-- Online PvP Lobby controls (Only shown in PvP mode) -->
-                <div id="pvp-setup-panel" style="display: none; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 1rem; margin-top: 1rem;">
+                    <!-- Game Mode Selector -->
+                    <div class="setup-group">
+                        <label class="setup-label">Game Mode</label>
+                        <div class="toggle-grid">
+                            <button class="btn-toggle btn-mode active" id="btn-mode-bot" data-mode="bot">vs Bot</button>
+                            <button class="btn-toggle btn-mode" id="btn-mode-pvp" data-mode="pvp">Online PvP</button>
+                        </div>
+                    </div>
                     
-                    <!-- Dynamic Draft Banner -->
-                    <div id="pvp-draft-banner" style="display: none; background: rgba(27,160,170,0.08); border: 1px solid rgba(27,160,170,0.15); border-radius: 8px; padding: 0.8rem; text-align: center; margin-bottom: 1rem;">
-                        <span id="pvp-draft-status" style="font-family: var(--font-cyber); font-weight: 700; color: var(--color-blue); font-size: 0.85rem; text-transform: uppercase;">DRAFT PHASE: HOST CHOOSING...</span>
-                        <div id="pvp-draft-timer" style="font-size: 1.8rem; font-family: var(--font-cyber); font-weight: 900; color: var(--color-gold); margin-top: 0.2rem;">10.0</div>
+                    <!-- Bot Difficulty Setup (Only shown in vs Bot mode) -->
+                    <div class="setup-group" id="setup-group-diff">
+                        <label class="setup-label">Bot Difficulty</label>
+                        <div class="toggle-grid">
+                            <button class="btn-toggle btn-diff active" data-diff="easy">Easy</button>
+                            <button class="btn-toggle btn-diff" data-diff="medium">Medium</button>
+                            <button class="btn-toggle btn-diff" data-diff="hard">Hard</button>
+                        </div>
                     </div>
 
-                    <!-- PvP Series Score Board -->
-                    <div id="pvp-series-score" style="display: none; background: rgba(27,160,170,0.05); border: 1px solid rgba(27,160,170,0.1); border-radius: 8px; padding: 0.6rem; text-align: center; margin-bottom: 1rem; font-family: var(--font-cyber); font-weight: 700;">
-                        <div style="font-size: 0.75rem; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 1px;">Rematch Tally</div>
-                        <div id="pvp-series-score-digits" style="font-size: 1.3rem; color: var(--color-gold); margin: 0.2rem 0;">0 - 0</div>
-                        <div id="pvp-series-score-type" style="font-size: 0.7rem; color: var(--color-blue); text-transform: uppercase;">Best of 3 Series</div>
+                    <!-- Strategy Assist Setup (Only shown in vs Bot mode) -->
+                    <div class="setup-group" id="setup-group-helper">
+                        <label class="setup-label">Strategy Assist (Helper)</label>
+                        <div class="toggle-grid" style="grid-template-columns: repeat(2, 1fr);">
+                            <button class="btn-toggle btn-helper active" id="btn-helper-on" data-helper="on">ON</button>
+                            <button class="btn-toggle btn-helper" id="btn-helper-off" data-helper="off">OFF</button>
+                        </div>
+                    </div>
+                    
+                    <!-- First Turn Setup (Only shown in vs Bot mode or Host PvP) -->
+                    <div class="setup-group" id="setup-group-turn">
+                        <label class="setup-label">First Turn</label>
+                        <div class="toggle-grid">
+                            <button class="btn-toggle btn-turn active-crimson" data-first="player">Player</button>
+                            <button class="btn-toggle btn-turn" data-first="bot">Bot</button>
+                        </div>
+                    </div>
+
+                    <!-- Online PvP Lobby controls (Only shown in PvP mode) -->
+                    <div id="pvp-setup-panel" style="display: none; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 1rem; margin-top: 1rem;">
+                        
+                        <!-- Dynamic Draft Banner -->
+                        <div id="pvp-draft-banner" style="display: none; background: rgba(27,160,170,0.08); border: 1px solid rgba(27,160,170,0.15); border-radius: 8px; padding: 0.8rem; text-align: center; margin-bottom: 1rem;">
+                            <span id="pvp-draft-status" style="font-family: var(--font-cyber); font-weight: 700; color: var(--color-blue); font-size: 0.85rem; text-transform: uppercase;">DRAFT PHASE: HOST CHOOSING...</span>
+                            <div id="pvp-draft-timer" style="font-size: 1.8rem; font-family: var(--font-cyber); font-weight: 900; color: var(--color-gold); margin-top: 0.2rem;">10.0</div>
+                        </div>
+
+                        <!-- PvP Series Score Board -->
+                        <div id="pvp-series-score" style="display: none; background: rgba(27,160,170,0.05); border: 1px solid rgba(27,160,170,0.1); border-radius: 8px; padding: 0.6rem; text-align: center; margin-bottom: 1rem; font-family: var(--font-cyber); font-weight: 700;">
+                            <div style="font-size: 0.75rem; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 1px;">Rematch Tally</div>
+                            <div id="pvp-series-score-digits" style="font-size: 1.3rem; color: var(--color-gold); margin: 0.2rem 0;">0 - 0</div>
+                            <div id="pvp-series-score-type" style="font-size: 0.7rem; color: var(--color-blue); text-transform: uppercase;">Best of 3 Series</div>
+                        </div>
+
+                        <div class="setup-group">
+                            <label class="setup-label">Online Status</label>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--color-text-dim);">
+                                <span class="indicator-dot" id="net-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #64748b; display: inline-block; transition: background 0.3s ease;"></span>
+                                <span id="net-status-text">Offline</span>
+                            </div>
+                        </div>
+
+                        <div class="toggle-grid" style="margin-bottom: 1rem; display: flex; gap: 0.4rem;">
+                            <button class="btn-toggle btn-pvp-role active" id="btn-role-host" style="flex: 1;" data-role="host">Host Room</button>
+                            <button class="btn-toggle btn-pvp-role" id="btn-role-join" style="flex: 1;" data-role="join">Join Room</button>
+                            <button class="btn-toggle btn-pvp-role" id="btn-role-quick" style="flex: 1;" data-role="quick">Quick Match</button>
+                        </div>
+
+                        <!-- Host View -->
+                        <div id="pvp-host-view">
+                            <div class="setup-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; text-align: center; border: 1px dashed rgba(255,255,255,0.1);">
+                                <span class="setup-label">Your Room Code</span>
+                                <div id="pvp-room-code" style="font-family: var(--font-cyber); font-size: 2.2rem; font-weight: 700; color: var(--color-gold); letter-spacing: 4px; margin: 0.5rem 0;">----</div>
+                                <span id="pvp-host-status" style="font-size: 0.8rem; color: var(--color-text-dim);">Initializing connection...</span>
+                            </div>
+                        </div>
+
+                        <!-- Join View -->
+                        <div id="pvp-join-view" style="display: none;">
+                            <div class="setup-group">
+                                <label class="setup-label" for="pvp-room-input">4-Digit Room Code</label>
+                                <input type="text" id="pvp-room-input" placeholder="e.g. 1234" maxlength="4" style="width:100%; padding:0.8rem; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#fff; font-family:var(--font-cyber); font-size:1.2rem; text-align:center; letter-spacing:4px; outline:none;">
+                            </div>
+                            <button class="btn-primary" id="btn-join-duel" style="background: linear-gradient(90deg, #ffaa00, #ff5500); box-shadow: 0 4px 15px rgba(255,85,0,0.3);">Connect to Duel</button>
+                        </div>
+
+                        <!-- Quick Match View -->
+                        <div id="pvp-quick-view" style="display: none;">
+                            <button class="btn-primary" id="btn-quick-match" style="background: linear-gradient(90deg, #1ba0aa, #147a82); box-shadow: 0 4px 15px rgba(27,160,170,0.3); width: 100%;">Find Opponent</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 Navigation Action -->
+                    <button class="btn-primary" id="btn-step-2-next" style="margin-top: 1.5rem;">Continue to Stakes</button>
+                    <button class="btn-toggle" id="btn-play-tutorial" style="margin-top: 0.8rem; width: 100%; font-size: 1rem; border-color: var(--color-blue); color: var(--color-blue); font-family: var(--font-cyber); font-weight: 700; text-transform: uppercase;">Play Tutorial</button>
+                </div>
+
+                <!-- STEP 3: DEAD NUMBER STAKES SELECTION -->
+                <div id="setup-step-3" class="setup-step-container" style="display: none;">
+                    <div style="display: flex; justify-content: flex-start; margin-bottom: 1.2rem;">
+                        <button class="btn-toggle" id="btn-step-3-back" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.85rem; border-color: rgba(255,255,255,0.15); color: var(--color-text-dim);">&larr; Back</button>
                     </div>
 
                     <div class="setup-group">
-                        <label class="setup-label">Online Status</label>
-                        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--color-text-dim);">
-                            <span class="indicator-dot" id="net-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #64748b; display: inline-block; transition: background 0.3s ease;"></span>
-                            <span id="net-status-text">Offline</span>
+                        <label class="setup-label">Select Dead Number (20 - 100)</label>
+                        <div class="dead-num-display"><span id="dead-num-display-val">25</span></div>
+                        <input type="range" id="dead-num-slider" class="slider-input" min="20" max="100" value="25">
+                    </div>
+
+                    <!-- Summary Recap Card -->
+                    <div class="summary-recap-card">
+                        <div class="recap-title">Match Setup Recap</div>
+                        <div id="setup-step-3-summary" class="recap-body">
+                            Mode: vs Bot (Easy)<br>Helper: ON | First Turn: Player
                         </div>
                     </div>
 
-                    <div class="toggle-grid" style="margin-bottom: 1rem; display: flex; gap: 0.4rem;">
-                        <button class="btn-toggle btn-pvp-role active" id="btn-role-host" style="flex: 1;" data-role="host">Host Room</button>
-                        <button class="btn-toggle btn-pvp-role" id="btn-role-join" style="flex: 1;" data-role="join">Join Room</button>
-                        <button class="btn-toggle btn-pvp-role" id="btn-role-quick" style="flex: 1;" data-role="quick">Quick Match</button>
-                    </div>
-
-                    <!-- Host View -->
-                    <div id="pvp-host-view">
-                        <div class="setup-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; text-align: center; border: 1px dashed rgba(255,255,255,0.1);">
-                            <span class="setup-label">Your Room Code</span>
-                            <div id="pvp-room-code" style="font-family: var(--font-cyber); font-size: 2.2rem; font-weight: 700; color: var(--color-gold); letter-spacing: 4px; margin: 0.5rem 0;">----</div>
-                            <span id="pvp-host-status" style="font-size: 0.8rem; color: var(--color-text-dim);">Initializing connection...</span>
-                        </div>
-                    </div>
-
-                    <!-- Join View -->
-                    <div id="pvp-join-view" style="display: none;">
-                        <div class="setup-group">
-                            <label class="setup-label" for="pvp-room-input">4-Digit Room Code</label>
-                            <input type="text" id="pvp-room-input" placeholder="e.g. 1234" maxlength="4" style="width:100%; padding:0.8rem; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#fff; font-family:var(--font-cyber); font-size:1.2rem; text-align:center; letter-spacing:4px; outline:none;">
-                        </div>
-                        <button class="btn-primary" id="btn-join-duel" style="background: linear-gradient(90deg, #ffaa00, #ff5500); box-shadow: 0 4px 15px rgba(255,85,0,0.3);">Connect to Duel</button>
-                    </div>
-
-                    <!-- Quick Match View -->
-                    <div id="pvp-quick-view" style="display: none;">
-                        <button class="btn-primary" id="btn-quick-match" style="background: linear-gradient(90deg, #1ba0aa, #147a82); box-shadow: 0 4px 15px rgba(27,160,170,0.3); width: 100%;">Find Opponent</button>
-                    </div>
-                </div>
-                
-                <button class="btn-primary" id="btn-start-game" style="margin-top: 1.5rem;">Initialize Duel</button>
-                <button class="btn-toggle" id="btn-play-tutorial" style="margin-top: 0.8rem; width: 100%; font-size: 1rem; border-color: var(--color-blue); color: var(--color-blue); font-family: var(--font-cyber); font-weight: 700; text-transform: uppercase;">Play Tutorial</button>
-                
-                <!-- Stats Dashboard -->
-                <div id="stats-dashboard" style="margin-top: 2rem; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 1.5rem;">
-                    <label class="setup-label" style="text-align: center; display: block; color: var(--color-blue); margin-bottom: 1rem;">SURVIVAL CORE STATS</label>
-                    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem; margin-bottom: 1rem;">
-                        <div class="stat-card" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 8px; text-align: center;">
-                            <div class="stat-val" id="stat-bot-games" style="font-family: var(--font-cyber); font-size: 1.2rem; color: var(--color-gold);">0 / 0</div>
-                            <div class="stat-lbl" style="font-size: 0.75rem; color: var(--color-text-dim); text-transform: uppercase; margin-top: 0.2rem;">Bot Wins/Played</div>
-                        </div>
-                        <div class="stat-card" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 8px; text-align: center;">
-                            <div class="stat-val" id="stat-pvp-games" style="font-family: var(--font-cyber); font-size: 1.2rem; color: var(--color-gold);">0 / 0</div>
-                            <div class="stat-lbl" style="font-size: 0.75rem; color: var(--color-text-dim); text-transform: uppercase; margin-top: 0.2rem;">PvP Wins/Played</div>
-                        </div>
-                        <div class="stat-card" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 8px; text-align: center;">
-                            <div class="stat-val" id="stat-win-ratio" style="font-family: var(--font-cyber); font-size: 1.2rem; color: var(--color-green);">0%</div>
-                            <div class="stat-lbl" style="font-size: 0.75rem; color: var(--color-text-dim); text-transform: uppercase; margin-top: 0.2rem;">Win Ratio</div>
-                        </div>
-                        <div class="stat-card" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 8px; text-align: center;">
-                            <div class="stat-val" id="stat-streak" style="font-family: var(--font-cyber); font-size: 1.2rem; color: var(--color-gold);">0</div>
-                            <div class="stat-lbl" style="font-size: 0.75rem; color: var(--color-text-dim); text-transform: uppercase; margin-top: 0.2rem;">Active Streak</div>
-                        </div>
-                    </div>
-                    <div style="text-align: center; margin-bottom: 1rem;">
-                        <button id="btn-reset-stats" style="background: none; border: none; color: var(--color-crimson); font-family: var(--font-cyber); font-size: 0.75rem; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;">Reset Stats</button>
-                    </div>
-
-                    <!-- Ranked Badge & Daily Bonus -->
-                    <div class="gamify-row" style="display: flex; gap: 0.8rem; margin-top: 1rem; margin-bottom: 1rem;">
-                        <!-- Badge Card -->
-                        <div class="stat-card" style="flex: 1; text-align: center;">
-                            <span class="setup-label" style="font-size: 0.75rem; margin-bottom: 0.4rem;">Rank Badge</span>
-                            <div id="rank-badge-display" class="rank-badge rank-bronze" style="font-family: var(--font-cyber); font-weight: 700; font-size: 1rem; padding: 0.4rem; border-radius: 8px; display: inline-block;">
-                                🏅 <span id="rank-badge-text">Bronze Evader</span>
-                            </div>
-                        </div>
-                        <!-- Daily Bonus Card -->
-                        <div class="stat-card" style="flex: 1; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                            <span class="setup-label" style="font-size: 0.75rem; margin-bottom: 0.4rem;">Daily Reward</span>
-                            <button class="btn-primary" id="btn-claim-daily" style="font-size: 0.8rem; padding: 0.5rem 1rem; border-radius: 8px; border-bottom-width: 2px;">Claim +100 🪙</button>
-                        </div>
-                    </div>
-
-
-
-                    <!-- Global Leaderboard Section -->
-                    <div class="leaderboard-section" style="margin-top: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 1.2rem;">
-                        <label class="setup-label" style="color: var(--color-gold); text-align: center; display: block; margin-bottom: 0.8rem; font-weight: 700; font-size: 0.95rem;">DUEL LEADERBOARD (GLOBAL TOP 5)</label>
-                        <div class="leaderboard-list" id="leaderboard-list">
-                            <!-- Populated dynamically -->
-                        </div>
-                    </div>
+                    <button class="btn-primary" id="btn-start-game" style="margin-top: 1.5rem;">Initialize Duel</button>
                 </div>
 
                 <!-- Copyright Footer -->
@@ -355,6 +402,6 @@
     <!-- <script src="js/dead_number.js"></script> -->
     
     <!-- Production Mode: obfuscated, encrypted, secure runtime code (uncomment below and comment out dev script above for release) -->
-    <script src="js/dead_number.obfuscated.js?v=1.0.8"></script>
+    <script src="js/dead_number.obfuscated.js?v=1.0.9"></script>
 </body>
 </html>
