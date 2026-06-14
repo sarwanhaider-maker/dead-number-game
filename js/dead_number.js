@@ -1278,7 +1278,12 @@ const DeadNumberGame = {
                 }
 
                 case 'ERROR': {
-                    alert(`Network Error: ${message.message}`);
+                    const silentErrors = ["It is not your turn.", "Invalid move selection.", "Game is already over."];
+                    if (silentErrors.includes(message.message)) {
+                        console.warn("[Network] Silent gameplay error from server:", message.message);
+                    } else {
+                        alert(`Network Error: ${message.message}`);
+                    }
                     const btn = document.getElementById('btn-join-duel');
                     if (btn) {
                         btn.disabled = false;
