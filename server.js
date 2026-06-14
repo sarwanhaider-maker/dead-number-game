@@ -35,12 +35,9 @@ function generateRoomCode() {
     return code;
 }
 
-// Get timer duration based on gameMode and difficulty
+// Get timer duration based on gameMode and difficulty (PvP matches are always 4.0s)
 function getTurnDuration(difficulty) {
-    if (difficulty === 'easy') return 7.0;
-    if (difficulty === 'medium') return 5.0;
-    if (difficulty === 'hard') return 3.0;
-    return 5.0; // Default for PvP / unknown modes
+    return 4.0;
 }
 
 // Clean up rooms periodically (e.g., inactive for over 1 hour)

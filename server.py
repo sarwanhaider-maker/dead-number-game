@@ -14,13 +14,7 @@ rooms = {}
 matchmaking_queue = []
 
 def get_turn_duration(difficulty):
-    if difficulty == 'easy':
-        return 7.0
-    if difficulty == 'medium':
-        return 5.0
-    if difficulty == 'hard':
-        return 3.0
-    return 5.0  # Default for PvP
+    return 4.0  # PvP matches always have a 4.0s turn timer
 
 async def broadcast_state(room, event_stage='update', extra_data=None):
     if extra_data is None:

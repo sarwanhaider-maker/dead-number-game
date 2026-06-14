@@ -93,7 +93,7 @@ const DeadNumberGame = {
             if (this.difficulty === 'medium') return 5.0;
             return 3.0; // hard
         }
-        return 5.0; // default for PvP
+        return 4.0; // 4s turn timer for PvP
     },
 
     updateSliderRangeForDifficulty() {
