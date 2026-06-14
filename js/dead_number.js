@@ -18,6 +18,18 @@ const DeadNumberGame = {
     // TTS Voice
     voiceEnabled: true,
 
+    // Monetization/Ads Configuration (Plug-and-play SDK bridge)
+    monetization: {
+        provider: 'none', // 'h5games' (Google AdSense Web), 'admob' (Capacitor Mobile), or 'none' (simulated sandbox countdown)
+        admob: {
+            rewardedId: 'ca-app-pub-3940256099942544/5224354917', // AdMob Test ID by default. Replace with your production ID
+            interstitialId: 'ca-app-pub-3940256099942544/1033173712'
+        },
+        h5games: {
+            publisherId: 'ca-pub-XXXXXXXXXXXXXXXX' // Replace with your AdSense Publisher Client ID
+        }
+    },
+
     // PvP / Networking properties
     gameMode: 'bot', // 'bot' or 'pvp'
     pvpRole: 'host', // 'host' or 'join'
@@ -57,6 +69,7 @@ const DeadNumberGame = {
     init() {
         this.loadStats();
         this.fetchRemoteConfig();
+        this.initH5GamesSdk();
         this.setupEventListeners();
         this.updateSliderRangeForDifficulty();
         this.showScreen('setup-screen');
@@ -593,7 +606,7 @@ const DeadNumberGame = {
                 btnLifelineTime.style.display = 'none';
                 this.buyTimeUsedThisTurn = true;
 
-                this.showAdOverlay(3, () => {
+                this.showAd('rewarded', () => {
                     const maxDuration = this.getTurnDuration();
                     this.turnTimer = maxDuration;
                     const timerText = document.getElementById('timer-digits');
@@ -635,7 +648,7 @@ const DeadNumberGame = {
                 const overlay = document.getElementById('revive-modal-overlay');
                 if (overlay) overlay.style.display = 'none';
                 
-                this.showAdOverlay(4, () => {
+                this.showAd('rewarded', () => {
                     if (this.rollbackState) {
                         this.currentTotal = this.rollbackState.currentTotal;
                         this.history = [...this.rollbackState.history];
@@ -2065,7 +2078,141 @@ const DeadNumberGame = {
         });
     },
 
-    showAdOverlay(duration, onComplete) {
+    initH5GamesSdk() {
+        if (this.monetization.provider !== 'h5games') return;
+        
+        console.log("[Ads] Initializing Google H5 Games Ad SDK...");
+        window.adsbygoogle = window.adsbygoogle || [];
+        const adConfigObj = {
+            preloadAdBreaks: 'on',
+            onReady: () => {
+                console.log("[Ads] Google H5 Games Ads API is Ready!");
+            }
+        };
+        window.adConfig = window.adConfig || function(o) {
+            Object.assign(adConfigObj, o);
+        };
+        
+        const script = document.createElement('script');
+        script.async = true;
+        script.dataAdFrequencyHint = '30s';
+        script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${this.monetization.h5games.publisherId}`;
+        document.head.appendChild(script);
+    },
+
+    showAd(adUnitType, onComplete) {
+        console.log(`[Ads] Requesting ${adUnitType} ad...`);
+        
+        // 1. CAPACITOR ADMOB (Mobile Native)
+        if (this.monetization.provider === 'admob' && window.Capacitor) {
+            this.showAdMobAd(adUnitType, onComplete);
+            return;
+        }
+        
+        // 2. GOOGLE H5 GAMES AD PLACEMENT API (Web AdSense)
+        if (this.monetization.provider === 'h5games' && window.adBreak) {
+            this.showH5GamesAd(adUnitType, onComplete);
+            return;
+        }
+        
+        // 3. SANDBOX FALLBACK (Simulated countdown)
+        const duration = (adUnitType === 'rewarded') ? 4 : 3;
+        this.showSimulatedAd(duration, onComplete);
+    },
+
+    async showAdMobAd(adUnitType, onComplete) {
+        try {
+            const { AdMob } = window.Capacitor.Plugins;
+            if (!AdMob) {
+                console.warn("[Ads] AdMob plugin not found, falling back to simulated ad.");
+                this.showSimulatedAd(3, onComplete);
+                return;
+            }
+            
+            clearInterval(this.timerInterval);
+            this.isAdPlaying = true;
+            
+            if (adUnitType === 'rewarded') {
+                const adId = this.monetization.admob.rewardedId;
+                
+                // Show loader spinner overlay
+                const overlay = document.getElementById('ad-video-overlay');
+                if (overlay) {
+                    overlay.style.display = 'flex';
+                    const countdownText = document.getElementById('ad-countdown-timer');
+                    if (countdownText) countdownText.textContent = "Loading Ad...";
+                }
+                
+                await AdMob.prepareRewardVideoAd({ adId: adId });
+                
+                if (overlay) overlay.style.display = 'none';
+                
+                AdMob.addListener('onAdMobRewardedAdDismissed', () => {
+                    this.isAdPlaying = false;
+                    AdMob.removeAllListeners();
+                    if (onComplete) onComplete();
+                });
+
+                AdMob.addListener('onAdMobRewardedAdFailedToLoad', (err) => {
+                    console.warn("[Ads] AdMob failed to load:", err);
+                    this.isAdPlaying = false;
+                    AdMob.removeAllListeners();
+                    this.showSimulatedAd(4, onComplete);
+                });
+                
+                await AdMob.showRewardVideoAd();
+            } else {
+                const adId = this.monetization.admob.interstitialId;
+                await AdMob.prepareInterstitialAd({ adId: adId });
+                
+                AdMob.addListener('onAdMobInterstitialAdDismissed', () => {
+                    this.isAdPlaying = false;
+                    AdMob.removeAllListeners();
+                    if (onComplete) onComplete();
+                });
+                
+                await AdMob.showInterstitialAd();
+            }
+        } catch (e) {
+            console.error("[Ads] AdMob execution failed, falling back:", e);
+            this.isAdPlaying = false;
+            this.showSimulatedAd(3, onComplete);
+        }
+    },
+
+    showH5GamesAd(adUnitType, onComplete) {
+        clearInterval(this.timerInterval);
+        this.isAdPlaying = true;
+        
+        const placementType = (adUnitType === 'rewarded') ? 'reward' : 'next-level';
+        
+        window.adBreak({
+            type: placementType,
+            name: adUnitType + '_ad',
+            beforeAd: () => {
+                console.log("[Ads] H5Games: ad beforeAd");
+            },
+            afterAd: () => {
+                console.log("[Ads] H5Games: ad completed (afterAd)");
+                this.isAdPlaying = false;
+                if (onComplete) onComplete();
+            },
+            adDismissed: () => {
+                console.log("[Ads] H5Games: ad dismissed");
+                this.isAdPlaying = false;
+                if (onComplete) onComplete();
+            },
+            adBreakDone: (placementInfo) => {
+                console.log("[Ads] H5Games: placement complete:", placementInfo);
+                this.isAdPlaying = false;
+                if (placementInfo.breakStatus === 'notReady' || placementInfo.breakStatus === 'timeout') {
+                    if (onComplete) onComplete();
+                }
+            }
+        });
+    },
+
+    showSimulatedAd(duration, onComplete) {
         const overlay = document.getElementById('ad-video-overlay');
         const countdownText = document.getElementById('ad-countdown-timer');
         if (!overlay || !countdownText) {
