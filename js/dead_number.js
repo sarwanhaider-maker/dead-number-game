@@ -17,6 +17,7 @@ const DeadNumberGame = {
     
     // TTS Voice
     voiceEnabled: true,
+    crazySDK: null,
 
     // Monetization/Ads Configuration (Plug-and-play SDK bridge)
     monetization: {
@@ -70,6 +71,7 @@ const DeadNumberGame = {
         this.loadStats();
         this.fetchRemoteConfig();
         this.initH5GamesSdk();
+        this.initCrazyGamesSDK();
         this.setupEventListeners();
         this.updateSliderRangeForDifficulty();
         this.showScreen('setup-screen');
@@ -724,6 +726,13 @@ const DeadNumberGame = {
         if (btnExitLobby) {
             btnExitLobby.onclick = () => {
                 this.playClickSound();
+                if (this.crazySDK) {
+                    try {
+                        this.crazySDK.game.gameplayStop();
+                    } catch (e) {
+                        console.warn(e);
+                    }
+                }
                 this.disconnectNetwork();
                 this.showScreen('setup-screen');
                 this.speak("Returned to lobby.");
@@ -951,6 +960,13 @@ const DeadNumberGame = {
     },
 
     startGame() {
+        if (this.crazySDK) {
+            try {
+                this.crazySDK.game.gameplayStart();
+            } catch (e) {
+                console.warn(e);
+            }
+        }
         this.currentTotal = 0;
         this.buyTimeUsedThisTurn = false;
         this.reviveUsedThisGame = false;
@@ -1330,6 +1346,14 @@ const DeadNumberGame = {
         this.isGameOver = true;
         clearInterval(this.timerInterval);
         
+        if (this.crazySDK) {
+            try {
+                this.crazySDK.game.gameplayStop();
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+        
         this.enableChoiceButtons(false);
         
         const verdictTitle = document.getElementById('verdict-title');
@@ -1401,6 +1425,14 @@ const DeadNumberGame = {
             
             if (this.isHost) {
                 this.broadcastState('game-over');
+            }
+        }
+
+        if (playerWon && this.crazySDK) {
+            try {
+                this.crazySDK.game.happytime();
+            } catch (e) {
+                console.warn(e);
             }
         }
     },
@@ -2102,8 +2134,23 @@ const DeadNumberGame = {
         document.head.appendChild(script);
     },
 
+    initCrazyGamesSDK() {
+        if (window.CrazyGames && window.CrazyGames.SDK) {
+            console.log("[Ads] CrazyGames SDK detected, initializing...");
+            this.crazySDK = window.CrazyGames.SDK;
+        } else {
+            console.log("[Ads] CrazyGames SDK not detected on window (yet).");
+        }
+    },
+
     showAd(adUnitType, onComplete) {
         console.log(`[Ads] Requesting ${adUnitType} ad...`);
+        
+        // 0. CRAZYGAMES SDK (Web Portal)
+        if (this.monetization.provider === 'crazygames' || this.crazySDK) {
+            this.showCrazyGamesAd(adUnitType, onComplete);
+            return;
+        }
         
         // 1. CAPACITOR ADMOB (Mobile Native)
         if (this.monetization.provider === 'admob' && window.Capacitor) {
@@ -2120,6 +2167,59 @@ const DeadNumberGame = {
         // 3. SANDBOX FALLBACK (Simulated countdown)
         const duration = (adUnitType === 'rewarded') ? 4 : 3;
         this.showSimulatedAd(duration, onComplete);
+    },
+
+    showCrazyGamesAd(adUnitType, onComplete) {
+        clearInterval(this.timerInterval);
+        this.isAdPlaying = true;
+        
+        const crazySDK = this.crazySDK || (window.CrazyGames && window.CrazyGames.SDK);
+        if (!crazySDK) {
+            console.warn("[Ads] CrazyGames SDK not loaded, falling back to simulated ad.");
+            this.showSimulatedAd(3, onComplete);
+            return;
+        }
+        
+        crazySDK.ad.requestAd(adUnitType, {
+            adStarted: () => {
+                console.log(`[Ads] CrazyGames: ${adUnitType} ad started`);
+                try {
+                    const ctx = this.getAudioCtx();
+                    if (ctx && typeof ctx.suspend === 'function') {
+                        ctx.suspend();
+                    }
+                } catch (e) {
+                    console.warn(e);
+                }
+            },
+            adFinished: () => {
+                console.log(`[Ads] CrazyGames: ${adUnitType} ad finished`);
+                this.isAdPlaying = false;
+                try {
+                    const ctx = this.getAudioCtx();
+                    if (ctx && typeof ctx.resume === 'function') {
+                        ctx.resume();
+                    }
+                } catch (e) {
+                    console.warn(e);
+                }
+                if (onComplete) onComplete();
+            },
+            adError: (error) => {
+                console.warn(`[Ads] CrazyGames ${adUnitType} ad error:`, error);
+                this.isAdPlaying = false;
+                try {
+                    const ctx = this.getAudioCtx();
+                    if (ctx && typeof ctx.resume === 'function') {
+                        ctx.resume();
+                    }
+                } catch (e) {
+                    console.warn(e);
+                }
+                const fallbackDur = (adUnitType === 'rewarded') ? 4 : 3;
+                this.showSimulatedAd(fallbackDur, onComplete);
+            }
+        });
     },
 
     async showAdMobAd(adUnitType, onComplete) {
