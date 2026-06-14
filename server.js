@@ -110,6 +110,13 @@ function handleTimeout(room) {
         room.isGameOver = true;
         const loser = room.currentTurn;
         const winner = loser === 'player' ? 'opponent' : 'player'; // opponent of loser wins
+        
+        if (winner === 'player') {
+            room.hostWins = (room.hostWins || 0) + 1;
+        } else {
+            room.challengerWins = (room.challengerWins || 0) + 1;
+        }
+
         broadcastState(room, 'game-over', { winner });
         return;
     }
@@ -136,7 +143,9 @@ function broadcastState(room, eventStage = 'update', extraData = {}) {
             turnTimer: room.turnTimer,
             hostName: room.hostName,
             challengerName: room.challengerName,
-            difficulty: room.difficulty
+            difficulty: room.difficulty,
+            hostWins: room.hostWins || 0,
+            challengerWins: room.challengerWins || 0
         },
         ...extraData
     });
@@ -188,7 +197,10 @@ wss.on('connection', (ws) => {
                         firstTurn,
                         turnTimer: getTurnDuration(difficulty),
                         timerInterval: null,
-                        lastActiveTime: Date.now()
+                        lastActiveTime: Date.now(),
+                        hostWins: 0,
+                        challengerWins: 0,
+                        isQuickMatch: false
                     };
 
                     rooms.set(code, newRoom);
@@ -300,6 +312,13 @@ wss.on('connection', (ws) => {
                         room.isGameOver = true;
                         const loser = room.currentTurn; // player or opponent
                         const winner = loser === 'player' ? 'opponent' : 'player'; // opponent of loser wins
+                        
+                        if (winner === 'player') {
+                            room.hostWins = (room.hostWins || 0) + 1;
+                        } else {
+                            room.challengerWins = (room.challengerWins || 0) + 1;
+                        }
+
                         broadcastState(room, 'game-over', { winner });
                         console.log(`[Server] Game over in Room ${code}. Winner: ${winner}.`);
                         return;
@@ -416,7 +435,10 @@ wss.on('connection', (ws) => {
                             selectionTurn: 'host', // Host gets first draft turn
                             draftTimer: 10.0,
                             isDraftActive: true,
-                            draftInterval: null
+                            draftInterval: null,
+                            hostWins: 0,
+                            challengerWins: 0,
+                            isQuickMatch: true
                         };
 
                         rooms.set(code, newRoom);
@@ -456,6 +478,117 @@ wss.on('connection', (ws) => {
                     if (idx !== -1) {
                         matchmakingQueue.splice(idx, 1);
                         console.log('[Server] Player left matchmaking queue.');
+                    }
+                    break;
+                }
+
+                case 'PLAY_AGAIN_REQUEST': {
+                    const code = ws.currentRoomId;
+                    const room = rooms.get(code);
+                    if (!room) {
+                        sendError(ws, 'Room not found.');
+                        return;
+                    }
+
+                    const opponent = ws.isHostConnection ? room.challengerSocket : room.hostSocket;
+                    if (!opponent || opponent.readyState !== 1) {
+                        sendError(ws, 'Opponent is no longer connected.');
+                        return;
+                    }
+
+                    room.playAgainRequester = ws;
+                    opponent.send(JSON.stringify({ type: 'PLAY_AGAIN_OFFERED' }));
+                    console.log(`[Server] Rematch requested in Room ${code} by ${ws.isHostConnection ? 'Host' : 'Challenger'}.`);
+                    break;
+                }
+
+                case 'PLAY_AGAIN_RESPONSE': {
+                    const code = ws.currentRoomId;
+                    const room = rooms.get(code);
+                    if (!room) {
+                        sendError(ws, 'Room not found.');
+                        return;
+                    }
+
+                    const requester = room.playAgainRequester;
+                    const accept = !!data.accept;
+
+                    if (!requester || requester.readyState !== 1) {
+                        sendError(ws, 'Rematch requester is no longer connected.');
+                        room.playAgainRequester = null;
+                        return;
+                    }
+
+                    if (accept) {
+                        console.log(`[Server] Rematch accepted in Room ${code}. Swapping roles...`);
+                        
+                        // 1. Swap roles/sockets, names, and win counts
+                        const tempSocket = room.hostSocket;
+                        room.hostSocket = room.challengerSocket;
+                        room.challengerSocket = tempSocket;
+
+                        const tempName = room.hostName;
+                        room.hostName = room.challengerName;
+                        room.challengerName = tempName;
+
+                        const tempWins = room.hostWins || 0;
+                        room.hostWins = room.challengerWins || 0;
+                        room.challengerWins = tempWins;
+
+                        // 2. Update socket role properties
+                        room.hostSocket.isHostConnection = true;
+                        room.challengerSocket.isHostConnection = false;
+
+                        // 3. Send explicit ROLE_ASSIGNMENT packets
+                        room.hostSocket.send(JSON.stringify({
+                            type: 'ROLE_ASSIGNMENT',
+                            isHost: true,
+                            roomId: code
+                        }));
+                        room.challengerSocket.send(JSON.stringify({
+                            type: 'ROLE_ASSIGNMENT',
+                            isHost: false,
+                            roomId: code
+                        }));
+
+                        // 4. Reset room state
+                        room.currentTotal = 0;
+                        room.isGameOver = false;
+                        room.history = [];
+                        room.turnTimer = getTurnDuration(room.difficulty);
+                        stopRoomTimer(room);
+                        stopDraftTimer(room);
+
+                        room.playAgainRequester = null;
+
+                        // 5. Start game or draft depending on match type
+                        if (room.isQuickMatch) {
+                            room.selectionTurn = 'host'; // New host selects first
+                            room.draftTimer = 10.0;
+                            room.isDraftActive = true;
+                            broadcastDraftState(room);
+                            startDraftTimer(room);
+                        } else {
+                            broadcastState(room, 'lobby-ready');
+                        }
+                    } else {
+                        console.log(`[Server] Rematch declined in Room ${code}.`);
+                        requester.send(JSON.stringify({ type: 'PLAY_AGAIN_REJECTED' }));
+                        room.playAgainRequester = null;
+                    }
+                    break;
+                }
+
+                case 'PLAY_AGAIN_CANCEL': {
+                    const code = ws.currentRoomId;
+                    const room = rooms.get(code);
+                    if (room && room.playAgainRequester === ws) {
+                        const opponent = ws.isHostConnection ? room.challengerSocket : room.hostSocket;
+                        if (opponent && opponent.readyState === 1) {
+                            opponent.send(JSON.stringify({ type: 'PLAY_AGAIN_CANCELLED' }));
+                        }
+                        room.playAgainRequester = null;
+                        console.log(`[Server] Rematch request cancelled in Room ${code}.`);
                     }
                     break;
                 }
@@ -572,7 +705,9 @@ function broadcastDraftState(room) {
             draftTimer: room.draftTimer,
             isDraftActive: room.isDraftActive,
             hostName: room.hostName,
-            challengerName: room.challengerName
+            challengerName: room.challengerName,
+            hostWins: room.hostWins || 0,
+            challengerWins: room.challengerWins || 0
         }
     });
 

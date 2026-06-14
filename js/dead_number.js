@@ -32,6 +32,8 @@ const DeadNumberGame = {
     history: [],
     isDraftActive: false,
     selectionTurn: 'host',
+    myWins: 0,
+    opponentWins: 0,
 
     // Remote Configuration for Dynamic Server URL
     remoteConfigUrl: 'https://raw.githubusercontent.com/sarwanhaider-maker/dead-number-game/main/config.json',
@@ -442,8 +444,45 @@ const DeadNumberGame = {
                     this.showScreen('setup-screen');
                     this.speak("Set your parameters to begin.");
                 } else {
-                    this.sendAction('RESET_LOBBY');
+                    const waitingOverlay = document.getElementById('play-again-waiting-overlay');
+                    if (waitingOverlay) waitingOverlay.style.display = 'flex';
+                    this.sendAction('PLAY_AGAIN_REQUEST');
                 }
+            };
+        }
+
+        // Play Again Accept / Reject / Cancel Button Event Listeners
+        const btnPlayAgainAccept = document.getElementById('btn-play-again-accept');
+        if (btnPlayAgainAccept) {
+            btnPlayAgainAccept.onclick = () => {
+                this.playClickSound();
+                const overlay = document.getElementById('play-again-overlay');
+                if (overlay) overlay.style.display = 'none';
+                this.sendAction('PLAY_AGAIN_RESPONSE', { accept: true });
+            };
+        }
+
+        const btnPlayAgainReject = document.getElementById('btn-play-again-reject');
+        if (btnPlayAgainReject) {
+            btnPlayAgainReject.onclick = () => {
+                this.playClickSound();
+                const overlay = document.getElementById('play-again-overlay');
+                if (overlay) overlay.style.display = 'none';
+                this.sendAction('PLAY_AGAIN_RESPONSE', { accept: false });
+                this.disconnectNetwork();
+                this.showScreen('setup-screen');
+            };
+        }
+
+        const btnPlayAgainCancel = document.getElementById('btn-play-again-cancel');
+        if (btnPlayAgainCancel) {
+            btnPlayAgainCancel.onclick = () => {
+                this.playClickSound();
+                const waitingOverlay = document.getElementById('play-again-waiting-overlay');
+                if (waitingOverlay) waitingOverlay.style.display = 'none';
+                this.sendAction('PLAY_AGAIN_CANCEL');
+                this.disconnectNetwork();
+                this.showScreen('setup-screen');
             };
         }
 
@@ -676,6 +715,49 @@ const DeadNumberGame = {
         }
     },
 
+    updateSeriesScoreUI() {
+        const scoreBoard = document.getElementById('pvp-series-score');
+        const scoreDigits = document.getElementById('pvp-series-score-digits');
+        const scoreType = document.getElementById('pvp-series-score-type');
+
+        const resultsScoreBoard = document.getElementById('pvp-results-score');
+        const resultsScoreDigits = document.getElementById('pvp-results-score-digits');
+        const resultsScoreType = document.getElementById('pvp-results-score-type');
+
+        if (this.gameMode === 'pvp' && (this.myWins > 0 || this.opponentWins > 0)) {
+            // Determine series type dynamically based on total wins
+            const totalGames = this.myWins + this.opponentWins;
+            let seriesLabel = "Best of 3";
+            if (totalGames >= 2) {
+                seriesLabel = "Best of 5";
+            }
+            if (totalGames >= 4) {
+                seriesLabel = "Best of 7";
+            }
+
+            // Update setup lobby score display
+            if (scoreBoard) scoreBoard.style.display = 'block';
+            if (scoreDigits) {
+                scoreDigits.textContent = `${this.myWins} - ${this.opponentWins}`;
+            }
+            if (scoreType) {
+                scoreType.textContent = `${seriesLabel} Series`;
+            }
+
+            // Update game-over results score display
+            if (resultsScoreBoard) resultsScoreBoard.style.display = 'block';
+            if (resultsScoreDigits) {
+                resultsScoreDigits.textContent = `${this.myWins} - ${this.opponentWins}`;
+            }
+            if (resultsScoreType) {
+                resultsScoreType.textContent = `${seriesLabel} Series`;
+            }
+        } else {
+            if (scoreBoard) scoreBoard.style.display = 'none';
+            if (resultsScoreBoard) resultsScoreBoard.style.display = 'none';
+        }
+    },
+
     startQuickMatchSearch() {
         this.isSearchingMatch = true;
         const btn = document.getElementById('btn-quick-match');
@@ -782,10 +864,19 @@ const DeadNumberGame = {
         this.showScreen('arena-screen');
         this.updateUI();
         
-        const startAnnounce = this.gameMode === 'bot' 
-            ? `Game started. Target dead number is ${this.deadNumber}. ${this.currentTurn === 'player' ? 'Your turn first' : 'Bot plays first'}.`
-            : `Online PvP started. Avoid the dead number ${this.deadNumber}. ${this.currentTurn === 'player' ? 'Host turn first' : 'Challenger turn first'}.`;
-        
+        let startAnnounce;
+        if (this.gameMode === 'bot') {
+            startAnnounce = `Game started. Target dead number is ${this.deadNumber}. ${this.currentTurn === 'player' ? 'Your turn first' : 'Bot plays first'}.`;
+        } else {
+            const isRematch = (this.myWins > 0 || this.opponentWins > 0);
+            if (isRematch) {
+                const myWinsLabel = this.myWins === 1 ? "1 win" : `${this.myWins} wins`;
+                const oppWinsLabel = this.opponentWins === 1 ? "1 win" : `${this.opponentWins} wins`;
+                startAnnounce = `Rematch started. Current score: You have ${myWinsLabel}, Opponent has ${oppWinsLabel}. Avoid the dead number ${this.deadNumber}. ${this.currentTurn === 'player' ? 'Host plays first' : 'Challenger plays first'}.`;
+            } else {
+                startAnnounce = `Online PvP started. Avoid the dead number ${this.deadNumber}. ${this.currentTurn === 'player' ? 'Host turn first' : 'Challenger turn first'}.`;
+            }
+        }
         this.speak(startAnnounce);
         
         setTimeout(() => {
@@ -1285,8 +1376,23 @@ const DeadNumberGame = {
         this.roomId = null;
         this.isDraftActive = false;
         this.selectionTurn = 'host';
+        this.myWins = 0;
+        this.opponentWins = 0;
+
         const draftBanner = document.getElementById('pvp-draft-banner');
         if (draftBanner) draftBanner.style.display = 'none';
+
+        const playAgainOverlay = document.getElementById('play-again-overlay');
+        if (playAgainOverlay) playAgainOverlay.style.display = 'none';
+
+        const playAgainWaitingOverlay = document.getElementById('play-again-waiting-overlay');
+        if (playAgainWaitingOverlay) playAgainWaitingOverlay.style.display = 'none';
+
+        const pvpSeriesScore = document.getElementById('pvp-series-score');
+        if (pvpSeriesScore) pvpSeriesScore.style.display = 'none';
+
+        const pvpResultsScore = document.getElementById('pvp-results-score');
+        if (pvpResultsScore) pvpResultsScore.style.display = 'none';
         
         const dot = document.getElementById('net-status-dot');
         const txt = document.getElementById('net-status-text');
@@ -1385,8 +1491,12 @@ const DeadNumberGame = {
 
                     if (this.isHost) {
                         this.opponentName = room.challengerName;
+                        this.myWins = room.hostWins || 0;
+                        this.opponentWins = room.challengerWins || 0;
                     } else {
                         this.opponentName = room.hostName;
+                        this.myWins = room.challengerWins || 0;
+                        this.opponentWins = room.hostWins || 0;
                     }
                     this.opponentConnected = true;
 
@@ -1394,7 +1504,15 @@ const DeadNumberGame = {
                         this.showScreen('setup-screen');
                     }
 
+                    // Hide any active rematch overlays
+                    const playAgainOverlay = document.getElementById('play-again-overlay');
+                    if (playAgainOverlay) playAgainOverlay.style.display = 'none';
+
+                    const playAgainWaitingOverlay = document.getElementById('play-again-waiting-overlay');
+                    if (playAgainWaitingOverlay) playAgainWaitingOverlay.style.display = 'none';
+
                     this.updateDraftUI(room);
+                    this.updateSeriesScoreUI();
                     break;
                 }
 
@@ -1416,15 +1534,27 @@ const DeadNumberGame = {
                     
                     if (this.isHost) {
                         this.opponentName = room.challengerName;
+                        this.myWins = room.hostWins || 0;
+                        this.opponentWins = room.challengerWins || 0;
                     } else {
                         this.opponentName = room.hostName;
+                        this.myWins = room.challengerWins || 0;
+                        this.opponentWins = room.hostWins || 0;
                         // Synchronize Setup UI displays for Challenger
                         document.getElementById('dead-num-display-val').textContent = this.deadNumber;
                         document.getElementById('dead-num-slider').value = this.deadNumber;
                     }
 
+                    // Hide any active rematch overlays
+                    const playAgainOverlay = document.getElementById('play-again-overlay');
+                    if (playAgainOverlay) playAgainOverlay.style.display = 'none';
+
+                    const playAgainWaitingOverlay = document.getElementById('play-again-waiting-overlay');
+                    if (playAgainWaitingOverlay) playAgainWaitingOverlay.style.display = 'none';
+
                     this.updateUI();
                     this.syncHistoryLog();
+                    this.updateSeriesScoreUI();
 
                     // Handle turn timer updates from server
                     this.turnTimer = room.turnTimer;
@@ -1474,6 +1604,37 @@ const DeadNumberGame = {
                     this.shakeScreen();
                     this.speak("Opponent disconnected. Connection severed.");
                     alert(message.message);
+                    this.disconnectNetwork();
+                    this.showScreen('setup-screen');
+                    break;
+                }
+
+                case 'PLAY_AGAIN_OFFERED': {
+                    const overlay = document.getElementById('play-again-overlay');
+                    if (overlay) overlay.style.display = 'flex';
+                    const desc = document.getElementById('play-again-desc');
+                    if (desc) {
+                        desc.textContent = `${this.opponentName} wants to play again! Roles will be swapped (previous Challenger gets the first turn).`;
+                    }
+                    this.speak(`${this.opponentName} has requested a rematch. Do you accept?`);
+                    break;
+                }
+
+                case 'PLAY_AGAIN_REJECTED': {
+                    const waitingOverlay = document.getElementById('play-again-waiting-overlay');
+                    if (waitingOverlay) waitingOverlay.style.display = 'none';
+                    this.speak("Rematch request declined.");
+                    alert("Opponent declined the rematch.");
+                    this.disconnectNetwork();
+                    this.showScreen('setup-screen');
+                    break;
+                }
+
+                case 'PLAY_AGAIN_CANCELLED': {
+                    const overlay = document.getElementById('play-again-overlay');
+                    if (overlay) overlay.style.display = 'none';
+                    this.speak("Rematch request cancelled.");
+                    alert("Opponent cancelled the rematch request.");
                     this.disconnectNetwork();
                     this.showScreen('setup-screen');
                     break;
