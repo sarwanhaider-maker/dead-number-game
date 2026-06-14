@@ -650,15 +650,17 @@ const DeadNumberGame = {
                 
                 this.showAd('rewarded', () => {
                     if (this.rollbackState) {
-                        this.currentTotal = this.rollbackState.currentTotal;
+                        const middleTotal = Math.floor(this.deadNumber / 2);
+                        this.currentTotal = middleTotal;
                         this.history = [...this.rollbackState.history];
+                        this.history.push(`Revived! Score set back to ${middleTotal}`);
                         this.currentTurn = 'player';
                         this.reviveUsedThisGame = true;
                         this.isGameOver = false;
                         
                         this.updateUI();
                         this.syncHistoryLog();
-                        this.speak("Second chance activated. Select again.");
+                        this.speak(`Second chance activated. Score reset to ${middleTotal}. Select again.`);
                         this.startTurn();
                     }
                 });
