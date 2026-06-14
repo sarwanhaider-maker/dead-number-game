@@ -377,7 +377,10 @@ async def handler(websocket):
                     is_host_turn = room.get('selectionTurn') == 'host' if room.get('isDraftActive') else True
                     is_host = (websocket == room['hostSocket'])
                     if is_host == is_host_turn:
-                        room['deadNumber'] = int(data.get('deadNumber', 25))
+                        if 'deadNumber' in data:
+                            room['deadNumber'] = int(data.get('deadNumber', 25))
+                        if 'firstTurn' in data:
+                            room['firstTurn'] = data.get('firstTurn')
                         if room.get('isDraftActive'):
                             await broadcast_draft_state(room)
                         else:

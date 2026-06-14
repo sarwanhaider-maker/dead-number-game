@@ -337,10 +337,15 @@ wss.on('connection', (ws) => {
                     const code = ws.currentRoomId;
                     const room = rooms.get(code);
                     if (room) {
-                        const isHostTurn = room.selectionTurn === 'host';
+                        const isHostTurn = room.isDraftActive ? (room.selectionTurn === 'host') : true;
                         const isHostConnection = (ws === room.hostSocket);
                         if (isHostConnection === isHostTurn) {
-                            room.deadNumber = parseInt(data.deadNumber) || 25;
+                            if (data.deadNumber !== undefined) {
+                                room.deadNumber = parseInt(data.deadNumber) || 25;
+                            }
+                            if (data.firstTurn !== undefined) {
+                                room.firstTurn = data.firstTurn;
+                            }
                             if (room.isDraftActive) {
                                 broadcastDraftState(room);
                             } else {

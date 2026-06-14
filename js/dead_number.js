@@ -345,6 +345,9 @@ const DeadNumberGame = {
                 btn.classList.add('active-crimson');
                 this.firstTurn = btn.dataset.first;
                 this.playClickSound();
+                if (this.gameMode === 'pvp' && this.isHost) {
+                    this.sendAction('UPDATE_CONFIG', { firstTurn: this.firstTurn });
+                }
             };
         });
 
@@ -857,6 +860,30 @@ const DeadNumberGame = {
         const turnGroup = document.getElementById('setup-group-turn');
         const slider = document.getElementById('dead-num-slider');
 
+        // Symmetrically update PvP Role Button styles
+        const btnRoleHost = document.getElementById('btn-role-host');
+        const btnRoleJoin = document.getElementById('btn-role-join');
+        const btnRoleQuick = document.getElementById('btn-role-quick');
+        if (this.isHost) {
+            if (btnRoleHost) btnRoleHost.classList.add('active');
+            if (btnRoleJoin) btnRoleJoin.classList.remove('active');
+            if (btnRoleQuick) btnRoleQuick.classList.remove('active');
+        } else {
+            if (btnRoleJoin) btnRoleJoin.classList.add('active');
+            if (btnRoleHost) btnRoleHost.classList.remove('active');
+            if (btnRoleQuick) btnRoleQuick.classList.remove('active');
+        }
+
+        // Symmetrically update turn selection button active classes
+        const turnButtons = document.querySelectorAll('.btn-turn');
+        turnButtons.forEach(btn => {
+            if (btn.dataset.first === this.firstTurn) {
+                btn.classList.add('active-crimson');
+            } else {
+                btn.classList.remove('active-crimson');
+            }
+        });
+
         if (this.isHost) {
             this.pvpRole = 'host';
             if (hostView) hostView.style.display = 'block';
@@ -885,7 +912,7 @@ const DeadNumberGame = {
             if (turnGroup) turnGroup.style.display = 'none';
             if (slider) slider.disabled = true; // Wait for Host
             
-            const roomCodeInput = document.getElementById('room-code-input');
+            const roomCodeInput = document.getElementById('pvp-room-input');
             if (roomCodeInput) {
                 roomCodeInput.value = this.roomId || '';
                 roomCodeInput.disabled = true;
@@ -1832,6 +1859,13 @@ const DeadNumberGame = {
                     this.currentTotal = room.currentTotal;
                     this.currentTurn = room.currentTurn;
                     this.history = room.history;
+                    this.isGameOver = room.isGameOver;
+
+                    // Always synchronize the Setup UI display and slider for both Host and Challenger
+                    const displayVal = document.getElementById('dead-num-display-val');
+                    const slider = document.getElementById('dead-num-slider');
+                    if (displayVal) displayVal.textContent = this.deadNumber;
+                    if (slider) slider.value = this.deadNumber;
                     
                     if (this.isHost) {
                         this.opponentName = room.challengerName;
@@ -1841,9 +1875,6 @@ const DeadNumberGame = {
                         this.opponentName = room.hostName;
                         this.myWins = room.challengerWins || 0;
                         this.opponentWins = room.hostWins || 0;
-                        // Synchronize Setup UI displays for Challenger
-                        document.getElementById('dead-num-display-val').textContent = this.deadNumber;
-                        document.getElementById('dead-num-slider').value = this.deadNumber;
                     }
 
                     // Hide any active rematch overlays
