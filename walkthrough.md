@@ -4,6 +4,26 @@ A premium sliding-based escape room game. Every lock, conduit, and system relay 
 
 ---
 
+## Part 14: Real-time Online Player Count
+
+We implemented real-time tracking of active online connections on the WebSocket server and displayed the live player count on the client interface.
+
+### 1. Authoritative Player Count Tracking (`server.js` & `server.py`)
+* **Live Connection Tracking:** The WebSocket server monitors connection count (using `wss.clients.size` in Node.js and a global `connected_clients` set in Python).
+* **Broadcasting updates:** When a player joins or disconnects, the server broadcasts an `ONLINE_COUNT` message to all connected clients containing the updated player tally.
+
+### 2. Symmetrical Client Status rendering (`js/dead_number.js`)
+* **UI Status Label updates:** Handled the `ONLINE_COUNT` message in the network dispatcher. If the lobby is online, the status message dynamically updates to: `Online (X active)` where X is the number of players currently connected to the server.
+
+---
+
+## Verification Results
+* **Compilation & Obfuscation:** Successfully compiled `js/dead_number.obfuscated.js` via `obfuscate.py` and prepared the upload folder `dead_number_upload`.
+* **Guided Tutorial Test:** Verified that playing the tutorial behaves as a completely guided walk, highlighting the correct buttons and concluding with a victory prompt.
+* **Exit Button Test:** Verified that clicking "Exit Tutorial" immediately returns the player to the lobby setup screen.
+* **Buy-Time Test:** Verified that the countdown timer is stopped instantly and choices are locked when the ad is requested.
+* **Online Player Count Test:** Verified that when the player connects to Online PvP mode, the connection indicator dot turns green and the status text shows the active player count (e.g. `Online (1 active)`).
+
 ## 🚪 Chamber 1: The Induction Vault
 1. **Floor Grate**: Click the grate at the bottom center to pick up the `Thermal Screwdriver` and `Stabilizer Shard`.
 2. **Hex Screws**: Select the `Thermal Screwdriver` from your Chronopack and click the **Wall Terminal Lock** cover plate to unscrew it.
