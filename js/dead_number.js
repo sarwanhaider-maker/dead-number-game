@@ -848,6 +848,56 @@ const DeadNumberGame = {
         }
     },
 
+    updatePvpRematchRoleUI() {
+        if (this.gameMode !== 'pvp') return;
+
+        const hostView = document.getElementById('pvp-host-view');
+        const joinView = document.getElementById('pvp-join-view');
+        const startBtn = document.getElementById('btn-start-game');
+        const turnGroup = document.getElementById('setup-group-turn');
+        const slider = document.getElementById('dead-num-slider');
+
+        if (this.isHost) {
+            this.pvpRole = 'host';
+            if (hostView) hostView.style.display = 'block';
+            if (joinView) joinView.style.display = 'none';
+            if (startBtn) {
+                startBtn.style.display = 'block';
+                startBtn.disabled = false;
+                startBtn.textContent = 'Launch Online Duel';
+            }
+            if (turnGroup) turnGroup.style.display = 'block';
+            if (slider) slider.disabled = false;
+            
+            const botTurnBtn = document.querySelector('.btn-turn[data-first="bot"]');
+            if (botTurnBtn) botTurnBtn.textContent = 'Challenger';
+            
+            const pvpHostStatus = document.getElementById('pvp-host-status');
+            if (pvpHostStatus) {
+                pvpHostStatus.textContent = `Challenger connected: ${this.opponentName}`;
+                pvpHostStatus.style.color = "var(--color-green)";
+            }
+        } else {
+            this.pvpRole = 'join';
+            if (hostView) hostView.style.display = 'none';
+            if (joinView) joinView.style.display = 'block';
+            if (startBtn) startBtn.style.display = 'none';
+            if (turnGroup) turnGroup.style.display = 'none';
+            if (slider) slider.disabled = true; // Wait for Host
+            
+            const roomCodeInput = document.getElementById('room-code-input');
+            if (roomCodeInput) {
+                roomCodeInput.value = this.roomId || '';
+                roomCodeInput.disabled = true;
+            }
+            const joinBtn = document.getElementById('btn-join-duel');
+            if (joinBtn) {
+                joinBtn.disabled = true;
+                joinBtn.textContent = 'Connected to Duel';
+            }
+        }
+    },
+
     isDeadNumberChangeable() {
         if (this.gameMode !== 'pvp') return true;
         if (this.isDraftActive) {
@@ -1716,6 +1766,7 @@ const DeadNumberGame = {
                     this.isHost = message.isHost;
                     this.roomId = message.roomId;
                     console.log("[Network] Assigned PvP Role. Is Host: " + this.isHost + ", Room: " + this.roomId);
+                    this.updatePvpRematchRoleUI();
                     break;
                 }
 
